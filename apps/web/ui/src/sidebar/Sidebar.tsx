@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { ViewProjectOption } from "@protocol/view";
-import { relativeTime } from "./Picker";
-import { SettingsButton } from "./Settings";
+import { relativeTime } from "../format";
 
 const COLLAPSED_KEY = "piruse.sidebar.collapsed";
 
@@ -166,7 +165,9 @@ export function Sidebar({
 			)}
 			<div className="sidebar-foot">
 				{collapsed ? null : <span className="sidebar-mark">π</span>}
-				<SettingsButton onClick={onSettings} />
+				<button type="button" className="sidebar-settings" aria-label="Settings" title="Settings" onClick={onSettings}>
+					<GearIcon />
+				</button>
 			</div>
 		</aside>
 	);
@@ -231,6 +232,20 @@ function FolderIcon() {
 				strokeWidth="1.3"
 				strokeLinejoin="round"
 			/>
+		</svg>
+	);
+}
+
+function GearIcon() {
+	return (
+		<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+			<path
+				d="M6.4 1.7h3.2l.35 1.55a4.8 4.8 0 0 1 1.2.7L12.7 3l1.6 2.77-1.2 1.05c.08.4.13.8.13 1.18s-.05.79-.13 1.18l1.2 1.05L12.7 13l-1.55-1.02a4.8 4.8 0 0 1-1.2.7L9.6 14.3H6.4l-.35-1.62a4.8 4.8 0 0 1-1.2-.7L3.3 13 1.7 10.23l1.2-1.05A5.4 5.4 0 0 1 2.77 8c0-.4.05-.79.13-1.18L1.7 5.77 3.3 3l1.55 1.02c.37-.3.77-.53 1.2-.7L6.4 1.7Z"
+				stroke="currentColor"
+				strokeWidth="1.3"
+				strokeLinejoin="round"
+			/>
+			<circle cx="8" cy="8" r="2.05" stroke="currentColor" strokeWidth="1.3" />
 		</svg>
 	);
 }
