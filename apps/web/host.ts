@@ -2,9 +2,9 @@
  * Local operator window. Binds 127.0.0.1 only. The browser never sees the harness.
  * Model keys come from ~/.pi/agent/auth.json (same file as pi), then provider env vars.
  *
- *   npm run web
+ *   npm run web                          # resume latest unarchived chat for this project
  *   npm run web -- --cwd ~/code/other
- *   npm run web -- --continue
+ *   npm run web -- --session <id>
  *   npm run web -- --model deepseek/deepseek-v4-flash
  */
 
@@ -38,6 +38,7 @@ const operator: Operator = await bootHarness({
 	sessionsRoot: args.sessionsRoot,
 	sessionId: args.sessionId,
 	continueSession: args.continueSession,
+	resumeLatest: true,
 	provider: args.provider,
 	model: args.model,
 	agentDir: args.agentDir,
@@ -184,6 +185,8 @@ wss.on("connection", (socket) => {
 					operator.rejectApprovals();
 					const result = await operator.lane.abort(operator.context);
 					if (!result.ok) notice(socket, result.error);
+					meta = await loadMeta(operator);
+					broadcast();
 					return;
 				}
 				if (message.type === "setPermissionMode" && message.mode) {
@@ -198,6 +201,8 @@ wss.on("connection", (socket) => {
 						broadcast();
 						const result = await operator.lane.prompt(message.text.trim(), undefined, operator.context);
 						if (!result.ok) notice(socket, result.error);
+						meta = await loadMeta(operator);
+						broadcast();
 					} else if (message.type === "setSessionTitle" && message.title?.trim()) {
 						await operator.setSessionTitle(message.sessionId, message.title);
 						meta = await loadMeta(operator);

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { ViewArchivedSession, ViewSessionOption } from "@protocol/view";
+import { ConfirmDialog } from "../dialog/Confirm";
 import { relativeTime } from "../format";
 import type { HostCommand } from "../socket";
 
@@ -16,6 +17,7 @@ export function ArchivePane({
 	running: boolean;
 	onCommand: HostCommand;
 }) {
+	const [pending, setPending] = useState<ViewSessionOption | null>(null);
 	return (
 		<div className="settings-models">
 			<p className="dialog-placeholder">归档后无法再打开该对话，文件仍保留，直到彻底删除。</p>
@@ -44,7 +46,7 @@ export function ArchivePane({
 									className="archive-btn"
 									disabled={disabled}
 									title={disabled ? "请先停止当前运行" : undefined}
-									onClick={() => onCommand({ type: "archiveSession", sessionId: session.id })}
+									onClick={() => setPending(session)}
 								>
 									归档
 								</button>
@@ -93,6 +95,18 @@ export function ArchivePane({
 					</div>
 				))}
 			</section>
+			<ConfirmDialog
+				open={Boolean(pending)}
+				title="归档对话"
+				body={`确认将「${pending?.title ?? ""}」归档吗？归档后可在「设置 · 存档」中查看已归档对话。`}
+				confirmLabel="确认归档"
+				onCancel={() => setPending(null)}
+				onConfirm={() => {
+					if (!pending) return;
+					onCommand({ type: "archiveSession", sessionId: pending.id });
+					setPending(null);
+				}}
+			/>
 		</div>
 	);
 }

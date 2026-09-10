@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import type { ViewProjectOption } from "@protocol/view";
-import { relativeTime } from "../format";
+import type { ViewProjectOption, ViewSessionOption } from "@protocol/view";
+import { ConfirmDialog } from "../dialog/Confirm";
+import { ChatRow } from "./ChatRow";
 
 const COLLAPSED_KEY = "piruse.sidebar.collapsed";
 
@@ -14,6 +15,7 @@ export function Sidebar({
 	onNewChat,
 	onOpenProject,
 	onOpenSession,
+	onArchive,
 	onSettings,
 }: {
 	cwd: string;
@@ -25,11 +27,14 @@ export function Sidebar({
 	onNewChat: () => void;
 	onOpenProject: (cwd: string) => void;
 	onOpenSession: (sessionId: string) => void;
+	onArchive: (sessionId: string) => void;
 	onSettings: () => void;
 }) {
 	const [openPath, setOpenPath] = useState(false);
 	const [path, setPath] = useState("");
 	const [expanded, setExpanded] = useState<Set<string>>(() => new Set([cwd]));
+	const [pending, setPending] = useState<ViewSessionOption | null>(null);
+	const now = useClock();
 	const addRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
@@ -139,19 +144,17 @@ export function Sidebar({
 									</button>
 									{open
 										? project.sessions.map((session) => (
-												<button
-													type="button"
+												<ChatRow
 													key={session.id}
-													className={`sidebar-chat${session.id === sessionId ? " active" : ""}`}
-													disabled={running && session.id !== sessionId}
-													title={running && session.id !== sessionId ? "请先停止当前运行" : session.title}
-													onClick={() => {
+													session={session}
+													active={session.id === sessionId}
+													running={running}
+													now={now}
+													onOpen={() => {
 														if (session.id !== sessionId) onOpenSession(session.id);
 													}}
-												>
-													<span>{session.title}</span>
-													<time>{relativeTime(session.modifiedAt)}</time>
-												</button>
+													onArchive={() => setPending(session)}
+												/>
 											))
 										: null}
 									{open && project.sessions.length === 0 ? (
@@ -169,8 +172,29 @@ export function Sidebar({
 					<GearIcon />
 				</button>
 			</div>
+			<ConfirmDialog
+				open={Boolean(pending)}
+				title="归档对话"
+				body={`确认将「${pending?.title ?? ""}」归档吗？归档后可在「设置 · 存档」中查看已归档对话。`}
+				confirmLabel="确认归档"
+				onCancel={() => setPending(null)}
+				onConfirm={() => {
+					if (!pending) return;
+					onArchive(pending.id);
+					setPending(null);
+				}}
+			/>
 		</aside>
 	);
+}
+
+function useClock(): number {
+	const [now, setNow] = useState(Date.now);
+	useEffect(() => {
+		const id = window.setInterval(() => setNow(Date.now()), 1000);
+		return () => window.clearInterval(id);
+	}, []);
+	return now;
 }
 
 export function readSidebarCollapsed(): boolean {

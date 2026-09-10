@@ -24,6 +24,7 @@ export function App() {
 				onNewChat={() => sendCommand({ type: "newSession" })}
 				onOpenProject={(cwd) => sendCommand({ type: "openProject", cwd })}
 				onOpenSession={(sessionId) => sendCommand({ type: "openSession", sessionId })}
+				onArchive={(sessionId) => sendCommand({ type: "archiveSession", sessionId })}
 				onSettings={() => setSettingsOpen(true)}
 			/>
 			<Workspace state={state} notice={notice} line={line} onCommand={sendCommand} onSend={sendPrompt} />

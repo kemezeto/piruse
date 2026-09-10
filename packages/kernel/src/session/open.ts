@@ -10,6 +10,8 @@ export interface OpenSessionOptions {
 	cwd: string;
 	sessionId?: string;
 	continueSession?: boolean;
+	/** Latest unarchived session for cwd, or create if none. Web default. */
+	resumeLatest?: boolean;
 	usable?: (sessionId: string) => boolean;
 }
 
@@ -29,12 +31,22 @@ export async function openInitialSession(
 		if (!metadata) throw new Error(`Unknown session: ${options.sessionId}`);
 		return repo.open(metadata, context);
 	}
+	const latest = await latestUsable(repo, options.cwd, usable, context);
 	if (options.continueSession) {
-		const listed = await repo.list({ cwd: options.cwd }, context);
-		listed.sort((left, right) => right.modifiedAt - left.modifiedAt);
-		const latest = listed.find((entry) => usable(entry.id));
 		if (!latest) throw new Error(`No sessions for ${options.cwd}. Run once without --continue.`);
 		return repo.open(latest, context);
 	}
+	if (options.resumeLatest && latest) return repo.open(latest, context);
 	return repo.create({ cwd: options.cwd }, context);
+}
+
+async function latestUsable(
+	repo: JsonlSessionRepo,
+	cwd: string,
+	usable: (sessionId: string) => boolean,
+	context: Context,
+): Promise<JsonlSessionMetadata | undefined> {
+	const listed = await repo.list({ cwd }, context);
+	listed.sort((left, right) => right.modifiedAt - left.modifiedAt);
+	return listed.find((entry) => usable(entry.id));
 }

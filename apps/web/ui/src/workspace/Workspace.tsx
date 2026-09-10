@@ -72,7 +72,7 @@ export function Workspace({
 			<div className="stage" ref={stageRef}>
 				{empty ? (
 					<div className="welcome">
-						<h1>piruse, 我帮你</h1>
+						<h1>欢迎使用 Piruse，说说你想做什么</h1>
 						{approvals}
 						{notice ? <p className="notice">{notice}</p> : null}
 						<Composer

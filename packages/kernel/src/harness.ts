@@ -52,6 +52,7 @@ export interface BootOptions {
 	sessionsRoot: string;
 	sessionId?: string;
 	continueSession?: boolean;
+	resumeLatest?: boolean;
 	provider?: string;
 	model?: string;
 	agentDir?: string;

@@ -204,12 +204,11 @@ textarea {
 	margin-top: 0.22rem;
 }
 
-.sidebar-folder,
-.sidebar-chat {
+.sidebar-folder {
 	width: 100%;
 	border: 0;
 	background: transparent;
-	color: var(--ink);
+	color: var(--muted);
 	display: flex;
 	align-items: center;
 	gap: 0.45rem;
@@ -217,48 +216,99 @@ textarea {
 	border-radius: 0.55rem;
 	cursor: pointer;
 	text-align: left;
+	font-size: 0.86rem;
+}
+
+.sidebar-chat {
+	width: 100%;
+	display: flex;
+	align-items: center;
+	gap: 0.25rem;
+	padding-left: 1.1rem;
+	border-radius: 0.55rem;
+	color: var(--ink);
+	font-size: 0.84rem;
 }
 
 .sidebar-folder span,
-.sidebar-chat span {
+.sidebar-chat-open span {
 	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
-.sidebar-folder {
-	color: var(--muted);
-	font-size: 0.86rem;
-}
-
 .sidebar-folder.current,
 .sidebar-folder:hover,
-.sidebar-chat:hover {
+.sidebar-chat:hover,
+.sidebar-chat.active {
 	background: var(--chip);
 	color: var(--ink);
 }
 
-.sidebar-chat {
-	padding-left: 1.55rem;
-	justify-content: space-between;
-	gap: 0.5rem;
-	font-size: 0.84rem;
+.sidebar-chat-open {
+	min-width: 0;
+	flex: 1;
+	border: 0;
+	background: transparent;
+	color: inherit;
+	display: flex;
+	align-items: center;
+	padding: 0.44rem 0.2rem 0.44rem 0.45rem;
+	border-radius: 0.45rem;
+	cursor: pointer;
+	text-align: left;
 }
 
-.sidebar-chat time {
+.sidebar-chat-open:hover:not(:disabled),
+.sidebar-chat-open:disabled {
+	background: transparent;
+}
+
+.sidebar-chat-action {
 	flex: none;
+	min-width: 4.6rem;
+	border: 0;
+	background: transparent;
+	padding: 0.2rem 0.4rem;
+	border-radius: 0.4rem;
 	color: var(--muted);
-	font-size: 0.7rem;
-	font-family: "Source Code Pro", ui-monospace, monospace;
+	cursor: pointer;
+	text-align: right;
 }
 
-.sidebar-chat.active {
-	background: var(--chip);
+.sidebar-chat-action time {
+	font-size: 0.7rem;
+	font-variant-numeric: tabular-nums;
+}
+
+.sidebar-chat-archive {
+	display: none;
+	font-size: 0.75rem;
+	font-weight: 550;
+	color: var(--ink);
+}
+
+.sidebar-chat:hover .sidebar-chat-action time,
+.sidebar-chat-action:focus-visible time {
+	display: none;
+}
+
+.sidebar-chat:hover .sidebar-chat-archive,
+.sidebar-chat-action:focus-visible .sidebar-chat-archive {
+	display: inline;
+}
+
+.sidebar-chat-action:hover:not(:disabled) {
+	background: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+
+.sidebar-chat.active .sidebar-chat-open {
 	font-weight: 550;
 }
 
-.sidebar-chat:disabled {
+.sidebar-chat-open:disabled,
+.sidebar-chat-action:disabled {
 	opacity: 0.45;
 	cursor: not-allowed;
 }
@@ -1083,6 +1133,73 @@ textarea {
 	display: grid;
 	place-items: center;
 	padding: 1.25rem;
+}
+
+.confirm-root {
+	z-index: 50;
+}
+
+.confirm {
+	position: relative;
+	width: min(26.5rem, 100%);
+	background: var(--surface);
+	border-radius: 1.15rem;
+	padding: 1.4rem 1.45rem 1.2rem;
+	box-shadow: 0 18px 48px rgba(20, 20, 16, 0.14);
+}
+
+.confirm h2 {
+	margin: 0 0 0.7rem;
+	font-size: 1.15rem;
+	font-weight: 700;
+	letter-spacing: -0.03em;
+}
+
+.confirm p {
+	margin: 0 0 1.45rem;
+	color: #4a4a45;
+	font-size: 0.95rem;
+	line-height: 1.6;
+}
+
+.confirm-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.55rem;
+}
+
+.confirm-cancel,
+.confirm-ok {
+	border-radius: 999px;
+	padding: 0.48rem 1.1rem;
+	cursor: pointer;
+	font-weight: 550;
+}
+
+.confirm-cancel {
+	border: 1px solid var(--line);
+	background: var(--surface);
+	color: var(--ink);
+}
+
+.confirm-cancel:hover:not(:disabled) {
+	background: var(--chip);
+}
+
+.confirm-ok {
+	border: 0;
+	background: var(--ink);
+	color: var(--bg);
+}
+
+.confirm-ok:hover:not(:disabled) {
+	background: #2a2a26;
+}
+
+.confirm-cancel:disabled,
+.confirm-ok:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
 }
 
 .dialog-scrim {
