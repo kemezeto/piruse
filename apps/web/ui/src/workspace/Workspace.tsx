@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ViewState } from "@protocol/view";
 import { ApprovalList } from "../approvals/ApprovalList";
 import { ModelPicker } from "../pickers/ModelPicker";
@@ -23,12 +23,34 @@ export function Workspace({
 }) {
 	const stageRef = useRef<HTMLDivElement>(null);
 	const empty = !state || state.items.length === 0;
+	const [scrolledUp, setScrolledUp] = useState(false);
+
+	const syncScrollFade = (): void => {
+		const el = stageRef.current;
+		if (!el) {
+			setScrolledUp(false);
+			return;
+		}
+		const fromEnd = el.scrollHeight - el.scrollTop - el.clientHeight;
+		setScrolledUp(fromEnd > 16);
+	};
 
 	useEffect(() => {
 		const el = stageRef.current;
 		if (!el) return;
 		el.scrollTop = el.scrollHeight;
+		syncScrollFade();
 	}, [state?.items]);
+
+	useEffect(() => {
+		const el = stageRef.current;
+		if (!el || empty) {
+			setScrolledUp(false);
+			return;
+		}
+		el.addEventListener("scroll", syncScrollFade, { passive: true });
+		return () => el.removeEventListener("scroll", syncScrollFade);
+	}, [empty]);
 
 	const modelPicker = state ? (
 		<ModelPicker
@@ -60,7 +82,7 @@ export function Workspace({
 	);
 
 	return (
-		<main className={`workspace${empty ? " is-empty" : ""}`}>
+		<main className={`workspace${empty ? " is-empty" : ""}${scrolledUp ? " is-scrolled" : ""}`}>
 			{empty ? null : (
 				<header className="workspace-head">
 					<div className="workspace-title">

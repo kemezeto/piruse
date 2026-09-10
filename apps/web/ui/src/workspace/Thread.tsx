@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import Markdown from "react-markdown";
+import { ChevronRightIcon } from "tdesign-icons-react";
 import type { ViewItem } from "@protocol/view";
 
 export function Thread({ items }: { items: ViewItem[] }) {
@@ -30,7 +32,7 @@ function Item({ item }: { item: ViewItem }) {
 					</span>
 					<div className="assistant-who">
 						<div className="assistant-name">piruse</div>
-						<div className="assistant-status">{item.streaming ? "正在回复…" : "已完成 ›"}</div>
+						{item.streaming ? <div className="assistant-status">正在回复…</div> : null}
 					</div>
 				</div>
 				<div className="md">
@@ -40,18 +42,32 @@ function Item({ item }: { item: ViewItem }) {
 		);
 	}
 	if (item.kind === "tool") {
-		return (
-			<details
-				className={`tool${item.running ? " running" : ""}${item.isError ? " is-error" : ""}`}
-				open={item.running || Boolean(item.result)}
-			>
-				<summary>
-					<span className="tool-name">{item.name}</span>
-					<span className="tool-args">{item.args}</span>
-				</summary>
-				{item.result ? <pre>{item.result}</pre> : null}
-			</details>
-		);
+		return <ToolCard item={item} />;
 	}
 	return <div className="note">{item.text}</div>;
+}
+
+function ToolCard({ item }: { item: Extract<ViewItem, { kind: "tool" }> }) {
+	const [open, setOpen] = useState(item.running || Boolean(item.result));
+	useEffect(() => {
+		if (item.running) setOpen(true);
+	}, [item.running]);
+	return (
+		<details
+			className={`tool${item.running ? " running" : ""}${item.isError ? " is-error" : ""}`}
+			open={open}
+			onToggle={(event) => setOpen(event.currentTarget.open)}
+		>
+			<summary>
+				<span className="tool-name">{item.name}</span>
+				<span className="tool-args">{item.args}</span>
+				<ChevronRightIcon size={16} className="caret tool-caret" aria-hidden="true" />
+			</summary>
+			{item.result ? (
+				<div className="tool-body">
+					<pre>{item.result}</pre>
+				</div>
+			) : null}
+		</details>
+	);
 }
