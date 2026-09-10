@@ -1,0 +1,31 @@
+{
+	"name": "piruse",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"start": "tsx apps/cli/main.ts",
+		"web": "tsx apps/web/host.ts",
+		"typecheck": "tsc --noEmit && tsc --noEmit -p apps/web/ui/tsconfig.json"
+	},
+	"dependencies": {
+		"@earendil-works/pi-agent-core": "0.85.1",
+		"@earendil-works/pi-ai": "0.85.1",
+		"@vitejs/plugin-react": "^5.1.2",
+		"react": "^19.2.4",
+		"react-dom": "^19.2.4",
+		"react-markdown": "^10.1.0",
+		"vite": "^7.3.1",
+		"ws": "^8.18.3"
+	},
+	"devDependencies": {
+		"@types/node": "22.19.19",
+		"@types/react": "^19.2.14",
+		"@types/react-dom": "^19.2.3",
+		"@types/ws": "^8.18.1",
+		"tsx": "4.21.0",
+		"typescript": "5.9.3"
+	},
+	"engines": {
+		"node": ">=22.19.0"
+	}
+}

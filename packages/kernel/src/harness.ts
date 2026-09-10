@@ -1,0 +1,469 @@
+import {
+	AgentHarness,
+	type AgentLane,
+	BACKGROUND_CONTEXT,
+	type Context,
+	type JsonlSessionMetadata,
+	JsonlSessionRepo,
+	type OpenOperation,
+	type Session,
+	type ThinkingLevel,
+} from "@earendil-works/pi-agent-core";
+import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
+import type { MutableModels, Provider } from "@earendil-works/pi-ai";
+import type {
+	ViewModelOption,
+	ViewProjectOption,
+	ViewProviderChoice,
+	ViewProviderOption,
+	ViewSessionOption,
+} from "../../protocol/src/view.ts";
+import { compactionSettings } from "./compaction/settings.ts";
+import { FileCredentialStore } from "./models/auth-store.ts";
+import { applyCustomCatalog } from "./models/apply-custom.ts";
+import { listAvailableModels, listProviderCatalog, resolveConfiguredModel } from "./models/index.ts";
+import { loadModelsJson, saveModelsJson, type ModelsJsonModel } from "./models/models-json.ts";
+import type { AgentPaths } from "./models/paths.ts";
+import { openInitialSession, shortId } from "./session/open.ts";
+import { readPermissionMode } from "./session/permissions.ts";
+import {
+	projectsFromSessions,
+	resolveProjectDirectory,
+	writeLastProject,
+} from "./session/projects.ts";
+import { resolveProfile, type AgentProfile, type AgentProfileId } from "./profile/index.ts";
+import { isPermissionMode, type PermissionMode } from "./tools/policy.ts";
+import { installPermissionHooks, PermissionGate } from "./hooks.ts";
+import type { ViewApproval } from "../../protocol/src/view.ts";
+
+export interface BootOptions {
+	cwd: string;
+	sessionsRoot: string;
+	sessionId?: string;
+	continueSession?: boolean;
+	provider?: string;
+	model?: string;
+	agentDir?: string;
+	profileId?: AgentProfileId;
+	permissionMode?: PermissionMode;
+	interactiveApprovals?: boolean;
+}
+
+export interface BootedHarness {
+	context: Context;
+	session: Session<JsonlSessionMetadata>;
+	harness: AgentHarness;
+	lane: AgentLane;
+	open: OpenOperation[];
+	model: { provider: string; id: string };
+	authSource: string | undefined;
+	resumeOpen(): Promise<void>;
+	close(): Promise<void>;
+	listModels(): Promise<ViewModelOption[]>;
+	listCatalog(): Promise<{ providers: ViewProviderOption[]; choices: ViewProviderChoice[] }>;
+	listSessions(): Promise<ViewSessionOption[]>;
+	listProjects(): Promise<ViewProjectOption[]>;
+	sessionTitle(): Promise<string>;
+	setModel(provider: string, modelId: string): Promise<void>;
+	openSession(sessionId: string): Promise<void>;
+	newSession(): Promise<void>;
+	openProject(cwd: string): Promise<void>;
+	setPermissionMode(mode: PermissionMode): Promise<void>;
+	resolveApproval(id: string, allow: boolean): void;
+	rejectApprovals(): void;
+	onPermissionChange(listener: () => void): () => void;
+	permissionMode(): PermissionMode;
+	pendingApprovals(): ViewApproval[];
+	addProvider(input: { id: string; name?: string; baseUrl: string; api: string; apiKey: string }): Promise<void>;
+	addModel(input: {
+		provider: string;
+		modelId: string;
+		name?: string;
+		reasoning?: boolean;
+		contextWindow?: number;
+		maxTokens?: number;
+	}): Promise<void>;
+	setProviderKey(provider: string, apiKey: string): Promise<void>;
+	isRunning(): Promise<boolean>;
+}
+
+export class Operator implements BootedHarness {
+	cwd: string;
+	session: Session<JsonlSessionMetadata>;
+	harness: AgentHarness;
+	lane: AgentLane;
+	open: OpenOperation[];
+	model: { provider: string; id: string };
+
+	private constructor(
+		readonly context: Context,
+		cwd: string,
+		readonly models: MutableModels,
+		readonly thinkingLevel: ThinkingLevel,
+		readonly authSource: string | undefined,
+		private readonly repo: JsonlSessionRepo,
+		private readonly sessionsRoot: string,
+		private readonly executionEnv: NodeExecutionEnv,
+		private readonly credentials: FileCredentialStore,
+		private readonly paths: AgentPaths,
+		private readonly originals: Map<string, Provider>,
+		private readonly permissions: PermissionGate,
+		readonly profile: AgentProfile,
+		bound: {
+			session: Session<JsonlSessionMetadata>;
+			harness: AgentHarness;
+			lane: AgentLane;
+			open: OpenOperation[];
+			model: { provider: string; id: string };
+		},
+	) {
+		this.cwd = cwd;
+		this.session = bound.session;
+		this.harness = bound.harness;
+		this.lane = bound.lane;
+		this.open = bound.open;
+		this.model = bound.model;
+	}
+
+	static async boot(options: BootOptions): Promise<Operator> {
+		const context = BACKGROUND_CONTEXT;
+		const configured = await resolveConfiguredModel({
+			agentDir: options.agentDir,
+			provider: options.provider,
+			model: options.model,
+		});
+		const executionEnv = new NodeExecutionEnv({ cwd: options.cwd });
+		const bootCwd = await resolveProjectDirectory(executionEnv, options.cwd, context);
+		executionEnv.cwd = bootCwd;
+		const repo = new JsonlSessionRepo({ fileSystem: executionEnv, sessionsRoot: options.sessionsRoot });
+		const session = await openInitialSession(repo, { ...options, cwd: bootCwd }, context);
+		const cwd = session.metadata.cwd;
+		executionEnv.cwd = cwd;
+		const profile = resolveProfile(options.profileId);
+		const interactive = options.interactiveApprovals === true;
+		const stored = interactive ? await readPermissionMode(options.sessionsRoot, cwd) : undefined;
+		const mode = options.permissionMode ?? stored ?? (interactive ? profile.permissionDefault : "allow");
+		const gate = new PermissionGate(
+			options.sessionsRoot,
+			cwd,
+			interactive,
+			mode,
+			() => profile.tools().map((tool) => tool.name),
+			profile.permissionDefault,
+		);
+		const bound = await Operator.bindSession(
+			context,
+			cwd,
+			configured.models,
+			configured.model,
+			configured.thinkingLevel,
+			executionEnv,
+			session,
+			gate,
+			profile,
+		);
+		const operator = new Operator(
+			context,
+			cwd,
+			configured.models,
+			configured.thinkingLevel,
+			configured.authSource,
+			repo,
+			options.sessionsRoot,
+			executionEnv,
+			configured.credentials,
+			configured.paths,
+			configured.originals,
+			gate,
+			profile,
+			bound,
+		);
+		return operator;
+	}
+
+	private static async bindSession(
+		context: Context,
+		cwd: string,
+		models: MutableModels,
+		model: { provider: string; id: string },
+		thinkingLevel: ThinkingLevel,
+		executionEnv: NodeExecutionEnv,
+		session: Session<JsonlSessionMetadata>,
+		permissions: PermissionGate,
+		profile: AgentProfile,
+	): Promise<{
+		session: Session<JsonlSessionMetadata>;
+		harness: AgentHarness;
+		lane: AgentLane;
+		open: OpenOperation[];
+		model: { provider: string; id: string };
+	}> {
+		const catalogModel = models.getModel(model.provider, model.id);
+		if (!catalogModel) throw new Error(`Unknown model ${model.provider}/${model.id}`);
+		const { harness, open } = await AgentHarness.create(
+			{
+				session,
+				models,
+				model: catalogModel,
+				thinkingLevel,
+				tools: profile.tools(),
+				toolContext: { env: executionEnv },
+				systemPrompt: profile.systemPrompt(cwd),
+				compaction: compactionSettings,
+			},
+			context,
+		);
+		installPermissionHooks(harness, permissions);
+		const lane = await harness.lane("main", context);
+		await permissions.applyTools(lane, context);
+		const live = await lane.getModel(context);
+		return {
+			session,
+			harness,
+			lane,
+			open,
+			model: live ? { provider: live.provider, id: live.id } : { provider: model.provider, id: model.id },
+		};
+	}
+
+	async listModels(): Promise<ViewModelOption[]> {
+		return listAvailableModels(this.models, this.model);
+	}
+
+	async listCatalog(): Promise<{ providers: ViewProviderOption[]; choices: ViewProviderChoice[] }> {
+		return listProviderCatalog(this.models, await loadModelsJson(this.paths.models), this.originals);
+	}
+
+	async listSessions(): Promise<ViewSessionOption[]> {
+		const listed = await this.repo.list({ cwd: this.cwd }, this.context);
+		listed.sort((left, right) => right.modifiedAt - left.modifiedAt);
+		const currentName = await this.sessionTitle();
+		return listed.slice(0, 80).map((entry) => ({
+			id: entry.id,
+			title: entry.id === this.session.metadata.id ? currentName : shortId(entry.id),
+			modifiedAt: entry.modifiedAt,
+		}));
+	}
+
+	async listProjects(): Promise<ViewProjectOption[]> {
+		return projectsFromSessions(await this.repo.list(undefined, this.context), this.cwd);
+	}
+
+	async sessionTitle(): Promise<string> {
+		const name = (await this.harness.getName(this.context).catch(() => undefined))?.trim();
+		return name || shortId(this.session.metadata.id);
+	}
+
+	async isRunning(): Promise<boolean> {
+		const info = await this.lane.inspectExecution(this.context);
+		return info.current !== null;
+	}
+
+	async setModel(provider: string, modelId: string): Promise<void> {
+		const found = this.models.getModel(provider, modelId);
+		if (!found) throw new Error(`Unknown model ${provider}/${modelId}`);
+		const auth = await this.models.checkAuth(found.provider);
+		if (!auth) throw new Error(`${found.provider} is not authenticated`);
+		await this.lane.setModel({ provider: found.provider, modelId: found.id }, this.context);
+		this.model = { provider: found.provider, id: found.id };
+	}
+
+	async openSession(sessionId: string): Promise<void> {
+		if (sessionId === this.session.metadata.id) return;
+		const metadata =
+			(await this.repo.list({ cwd: this.cwd }, this.context)).find((entry) => entry.id === sessionId) ??
+			(await this.repo.list(undefined, this.context)).find((entry) => entry.id === sessionId);
+		if (!metadata) throw new Error(`Unknown session: ${sessionId}`);
+		await this.replaceSession(() => this.repo.open(metadata, this.context));
+	}
+
+	async newSession(): Promise<void> {
+		await this.replaceSession(() => this.repo.create({ cwd: this.cwd }, this.context));
+	}
+
+	async openProject(cwdInput: string): Promise<void> {
+		const cwd = await resolveProjectDirectory(this.executionEnv, cwdInput, this.context);
+		if (cwd === this.cwd) return;
+		await this.replaceSession(async () => {
+			const listed = await this.repo.list({ cwd }, this.context);
+			listed.sort((left, right) => right.modifiedAt - left.modifiedAt);
+			const latest = listed[0];
+			return latest ? this.repo.open(latest, this.context) : this.repo.create({ cwd }, this.context);
+		});
+	}
+
+	permissionMode(): PermissionMode {
+		return this.permissions.mode;
+	}
+
+	pendingApprovals(): ViewApproval[] {
+		return this.permissions.viewApprovals();
+	}
+
+	onPermissionChange(listener: () => void): () => void {
+		return this.permissions.onChange(listener);
+	}
+
+	async setPermissionMode(mode: PermissionMode): Promise<void> {
+		if (!isPermissionMode(mode)) throw new Error(`Unknown permission mode: ${String(mode)}`);
+		await this.permissions.setMode(mode, this.lane, this.context);
+	}
+
+	resolveApproval(id: string, allow: boolean): void {
+		this.permissions.resolve(id, allow);
+	}
+
+	rejectApprovals(): void {
+		this.permissions.rejectAll("Cancelled");
+	}
+
+	private applyCwd(cwd: string): void {
+		this.cwd = cwd;
+		this.executionEnv.cwd = cwd;
+	}
+
+	private async rememberProject(): Promise<void> {
+		await writeLastProject(this.sessionsRoot, this.cwd).catch(() => {});
+	}
+
+	private async replaceSession(open: () => Promise<Session<JsonlSessionMetadata>>): Promise<void> {
+		if (await this.isRunning()) throw new Error("Stop the current run before switching sessions.");
+		const previous = this.session.metadata;
+		await this.harness.close(this.context);
+		try {
+			const session = await open();
+			this.applyCwd(session.metadata.cwd);
+			const bound = await Operator.bindSession(
+				this.context,
+				this.cwd,
+				this.models,
+				this.model,
+				this.thinkingLevel,
+				this.executionEnv,
+				session,
+				this.permissions,
+				this.profile,
+			);
+			this.session = bound.session;
+			this.harness = bound.harness;
+			this.lane = bound.lane;
+			this.open = bound.open;
+			this.model = bound.model;
+			await this.permissions.loadForCwd(this.cwd, this.context, this.lane);
+			await this.resumeOpen();
+			await this.rememberProject();
+		} catch (error) {
+			this.applyCwd(previous.cwd);
+			const fallback = await this.repo.open(previous, this.context);
+			const bound = await Operator.bindSession(
+				this.context,
+				this.cwd,
+				this.models,
+				this.model,
+				this.thinkingLevel,
+				this.executionEnv,
+				fallback,
+				this.permissions,
+				this.profile,
+			);
+			this.session = bound.session;
+			this.harness = bound.harness;
+			this.lane = bound.lane;
+			this.open = bound.open;
+			this.model = bound.model;
+			await this.permissions.loadForCwd(this.cwd, this.context, this.lane);
+			throw error;
+		}
+	}
+
+	async setProviderKey(provider: string, apiKey: string): Promise<void> {
+		const id = provider.trim();
+		if (!this.models.getProvider(id)) throw new Error(`Unknown provider "${id}"`);
+		await this.credentials.setApiKey(id, apiKey);
+	}
+
+	async addProvider(input: { id: string; name?: string; baseUrl: string; api: string; apiKey: string }): Promise<void> {
+		const id = slugId(input.id);
+		const baseUrl = input.baseUrl.trim().replace(/\/$/, "");
+		const api = input.api.trim();
+		if (!baseUrl) throw new Error("baseUrl is required");
+		if (!api) throw new Error("api is required");
+		try {
+			new URL(baseUrl);
+		} catch {
+			throw new Error("baseUrl must be a valid URL");
+		}
+		if (this.models.getProvider(id)) throw new Error(`Provider "${id}" already exists`);
+		const file = await loadModelsJson(this.paths.models);
+		file.providers[id] = {
+			name: input.name?.trim() || id,
+			baseUrl,
+			api,
+			models: [],
+		};
+		await saveModelsJson(this.paths.models, file);
+		await this.credentials.setApiKey(id, input.apiKey);
+		this.reloadCatalog(file);
+	}
+
+	async addModel(input: {
+		provider: string;
+		modelId: string;
+		name?: string;
+		reasoning?: boolean;
+		contextWindow?: number;
+		maxTokens?: number;
+	}): Promise<void> {
+		const providerId = input.provider.trim();
+		const modelId = input.modelId.trim();
+		if (!providerId || !modelId) throw new Error("provider and model id are required");
+		const provider = this.models.getProvider(providerId);
+		if (!provider) throw new Error(`Unknown provider "${providerId}"`);
+		if (this.models.getModel(providerId, modelId)) throw new Error(`Model ${providerId}/${modelId} already exists`);
+		const file = await loadModelsJson(this.paths.models);
+		const current = file.providers[providerId] ?? {};
+		const next: ModelsJsonModel = {
+			id: modelId,
+			name: input.name?.trim() || modelId,
+			reasoning: input.reasoning,
+			contextWindow: input.contextWindow,
+			maxTokens: input.maxTokens,
+		};
+		file.providers[providerId] = {
+			...current,
+			name: current.name ?? provider.name,
+			baseUrl: current.baseUrl ?? provider.baseUrl ?? provider.getModels()[0]?.baseUrl,
+			api: current.api ?? provider.getModels()[0]?.api,
+			models: [...(current.models ?? []).filter((model) => model.id !== modelId), next],
+		};
+		await saveModelsJson(this.paths.models, file);
+		this.reloadCatalog(file);
+	}
+
+	private reloadCatalog(file: Awaited<ReturnType<typeof loadModelsJson>>): void {
+		applyCustomCatalog(this.models, file, this.originals);
+	}
+
+	async resumeOpen(): Promise<void> {
+		for (const operation of this.open) {
+			const restored = operation.lane === this.lane.name ? this.lane : await this.harness.lane(operation.lane, this.context);
+			const result = await restored.resume(this.context);
+			if (!result.ok) throw result.error;
+		}
+	}
+
+	async close(): Promise<void> {
+		this.permissions.rejectAll("Closed");
+		await this.harness.close(this.context).catch(() => {});
+		await this.repo.close(this.context).catch(() => {});
+		await this.executionEnv.cleanup(this.context).catch(() => {});
+	}
+}
+
+function slugId(id: string): string {
+	const value = id.trim().toLowerCase();
+	if (!/^[a-z][a-z0-9-]*$/.test(value)) {
+		throw new Error("Provider id must start with a letter, then letters, digits, or hyphens");
+	}
+	return value;
+}

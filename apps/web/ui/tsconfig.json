@@ -1,0 +1,20 @@
+{
+	"compilerOptions": {
+		"target": "ES2023",
+		"lib": ["ES2023", "DOM", "DOM.Iterable"],
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"jsx": "react-jsx",
+		"strict": true,
+		"noEmit": true,
+		"skipLibCheck": true,
+		"verbatimModuleSyntax": true,
+		"isolatedModules": true,
+		"types": ["vite/client"],
+		"baseUrl": ".",
+		"paths": {
+			"@protocol/*": ["../../../packages/protocol/src/*"]
+		}
+	},
+	"include": ["src", "../../../packages/protocol/src"]
+}
