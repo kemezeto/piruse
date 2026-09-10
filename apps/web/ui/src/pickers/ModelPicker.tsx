@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { StarIcon } from "tdesign-icons-react";
 import type { ViewModelOption } from "@protocol/view";
 import { Menu } from "./Menu";
 
@@ -34,7 +35,7 @@ export function ModelPicker({
 			drop="up"
 			variant="inline"
 			label="模型"
-			icon={<SparkleGlyph />}
+			icon={<StarIcon size={14} />}
 			value={models.find((model) => model.provider === current.provider && model.modelId === current.modelId)?.name ?? current.modelId}
 		>
 			{(close) => (
@@ -79,15 +80,3 @@ export function ModelPicker({
 	);
 }
 
-function SparkleGlyph() {
-	return (
-		<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-			<path
-				d="M8 1.6 8.95 6.05 13.4 7 8.95 7.95 8 12.4 7.05 7.95 2.6 7 7.05 6.05 8 1.6Z"
-				stroke="currentColor"
-				strokeWidth="1.2"
-				strokeLinejoin="round"
-			/>
-		</svg>
-	);
-}

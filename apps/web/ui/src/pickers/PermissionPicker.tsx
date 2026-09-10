@@ -1,3 +1,4 @@
+import { SecuredIcon } from "tdesign-icons-react";
 import type { PermissionMode } from "@protocol/view";
 import { Menu } from "./Menu";
 
@@ -23,7 +24,7 @@ export function PermissionPicker({
 			label="默认权限"
 			value="默认权限"
 			hint={PERMISSIONS.find((entry) => entry.mode === mode)?.hint ?? mode}
-			icon={<CheckGlyph />}
+			icon={<SecuredIcon size={14} />}
 		>
 			{(close) => (
 				<div className="popover-list" role="listbox" aria-label="Permission mode">
@@ -51,11 +52,3 @@ export function PermissionPicker({
 	);
 }
 
-function CheckGlyph() {
-	return (
-		<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-			<circle cx="8" cy="8" r="5.4" stroke="currentColor" strokeWidth="1.3" />
-			<path d="M5.3 8.15 7.15 10l3.6-4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-		</svg>
-	);
-}

@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
+import { ArrowUpIcon, StopIcon } from "tdesign-icons-react";
 
 export function Composer({
 	layout,
@@ -54,11 +55,11 @@ export function Composer({
 						{model}
 						{running ? (
 							<button type="button" className="icon-btn primary" title="Stop" aria-label="Stop" onClick={onAbort}>
-								<StopIcon />
+								<StopIcon size={14} />
 							</button>
 						) : (
 							<button type="submit" className="icon-btn primary" title="Send" aria-label="Send" disabled={!canSend}>
-								<ArrowIcon />
+								<ArrowUpIcon size={16} />
 							</button>
 						)}
 					</div>
@@ -71,21 +72,5 @@ export function Composer({
 				</div>
 			) : null}
 		</div>
-	);
-}
-
-function ArrowIcon() {
-	return (
-		<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-			<path d="M8 3.2v9.6M4.2 7.1 8 3.2l3.8 3.9" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-		</svg>
-	);
-}
-
-function StopIcon() {
-	return (
-		<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
-			<rect x="3" y="3" width="8" height="8" rx="1.2" />
-		</svg>
 	);
 }

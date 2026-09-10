@@ -1,4 +1,5 @@
 import type { ViewSessionOption } from "@protocol/view";
+import { FolderMoveIcon } from "tdesign-icons-react";
 import { relativeTime } from "../format";
 
 export function ChatRow({
@@ -37,7 +38,10 @@ export function ChatRow({
 				onClick={onArchive}
 			>
 				<time dateTime={new Date(session.modifiedAt).toISOString()}>{relativeTime(session.modifiedAt, now)}</time>
-				<span className="sidebar-chat-archive">归档</span>
+				<span className="sidebar-chat-archive">
+					<FolderMoveIcon size={14} />
+					归档
+				</span>
 			</button>
 		</div>
 	);

@@ -1,3 +1,4 @@
+import { FolderIcon } from "tdesign-icons-react";
 import { useState } from "react";
 import type { ViewProjectOption } from "@protocol/view";
 import { basenameOf } from "../format";
@@ -26,7 +27,7 @@ export function ProjectPicker({
 			label="选择工作空间"
 			value="选择工作空间"
 			hint={cwd ? `${name} · ${cwd}` : "选择工作目录"}
-			icon={<FolderGlyph />}
+			icon={<FolderIcon size={14} />}
 			disabled={running}
 		>
 			{(close) => (
@@ -84,15 +85,3 @@ export function ProjectPicker({
 	);
 }
 
-function FolderGlyph() {
-	return (
-		<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-			<path
-				d="M2.2 4.5h4.05l1.1 1.15H13.8v7.05H2.2V4.5Z"
-				stroke="currentColor"
-				strokeWidth="1.3"
-				strokeLinejoin="round"
-			/>
-		</svg>
-	);
-}

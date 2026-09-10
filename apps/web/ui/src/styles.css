@@ -1,14 +1,15 @@
 :root {
-	--bg: #f7f7f4;
-	--surface: #ffffff;
-	--ink: #0e0e0c;
-	--muted: #6b6b64;
-	--line: #e6e6e0;
-	--chip: #efefe9;
-	--user: #ecece8;
-	--danger: #c43c1c;
-	--shadow: 0 8px 28px rgba(20, 20, 16, 0.06);
-	--radius: 1.5rem;
+	--bg: var(--td-bg-color-page);
+	--surface: var(--td-bg-color-container);
+	--ink: var(--td-text-color-primary);
+	--muted: var(--td-text-color-secondary);
+	--line: var(--td-component-border);
+	--chip: var(--td-bg-color-secondarycontainer);
+	--user: var(--td-gray-color-2);
+	--danger: var(--td-error-color);
+	--brand: var(--td-brand-color);
+	--shadow: var(--td-shadow-1);
+	--radius: 0.75rem;
 }
 
 * {
@@ -25,7 +26,7 @@ body,
 body {
 	background: var(--bg);
 	color: var(--ink);
-	font-family: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+	font-family: "PingFang SC", "Microsoft YaHei", "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
 	font-size: 16px;
 	line-height: 1.55;
 }
@@ -35,10 +36,14 @@ textarea {
 	font: inherit;
 }
 
+.t-icon {
+	flex: none;
+}
+
 .app {
 	height: 100%;
 	display: grid;
-	grid-template-columns: minmax(0, 2fr) minmax(0, 8fr);
+	grid-template-columns: minmax(0, 1.5fr) minmax(0, 8.5fr);
 	grid-template-rows: minmax(0, 1fr);
 }
 
@@ -284,6 +289,9 @@ textarea {
 
 .sidebar-chat-archive {
 	display: none;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 0.2rem;
 	font-size: 0.75rem;
 	font-weight: 550;
 	color: var(--ink);
@@ -296,7 +304,7 @@ textarea {
 
 .sidebar-chat:hover .sidebar-chat-archive,
 .sidebar-chat-action:focus-visible .sidebar-chat-archive {
-	display: inline;
+	display: inline-flex;
 }
 
 .sidebar-chat-action:hover:not(:disabled) {
@@ -451,7 +459,7 @@ textarea {
 }
 
 .menu-btn:hover:not(:disabled),
-.menu.open .menu-btn {
+.menu-btn.open {
 	background: var(--surface);
 	border-color: var(--line);
 }
@@ -483,7 +491,7 @@ textarea {
 }
 
 .menu-btn.inline:hover:not(:disabled),
-.menu.open .menu-btn.inline {
+.menu-btn.inline.open {
 	background: var(--chip);
 	border-color: transparent;
 }
@@ -505,27 +513,16 @@ textarea {
 }
 
 .popover {
-	position: absolute;
-	top: calc(100% + 0.4rem);
-	z-index: 20;
+	z-index: 30;
 	width: min(22rem, 70vw);
 	background: var(--surface);
 	border: 1px solid var(--line);
-	border-radius: 0.95rem;
+	border-radius: var(--td-radius-medium, 6px);
 	box-shadow: var(--shadow);
 	padding: 0.45rem;
 	display: flex;
 	flex-direction: column;
 	gap: 0.35rem;
-}
-
-.popover.right {
-	right: 0;
-}
-
-.popover.up {
-	top: auto;
-	bottom: calc(100% + 0.4rem);
 }
 
 .popover.wide {
@@ -584,7 +581,8 @@ textarea {
 }
 
 .popover-search:focus {
-	border-color: #c8c8c1;
+	border-color: var(--td-brand-color);
+	box-shadow: 0 0 0 2px var(--td-brand-color-focus);
 }
 
 .popover-new {
@@ -658,12 +656,12 @@ textarea {
 	width: 0.45rem;
 	height: 0.45rem;
 	border-radius: 999px;
-	background: #bdbdb6;
+	background: var(--td-gray-color-5);
 	flex: none;
 }
 
 .dot.live {
-	background: #2f9d4e;
+	background: var(--td-success-color);
 }
 
 .stage {
@@ -747,8 +745,8 @@ textarea {
 	width: 1.7rem;
 	height: 1.7rem;
 	border-radius: 999px;
-	background: #3a3a38;
-	color: #f4f4f0;
+	background: var(--brand);
+	color: var(--td-text-color-anti);
 	display: grid;
 	place-items: center;
 	font-size: 0.72rem;
@@ -858,7 +856,7 @@ textarea {
 	padding: 0 0.85rem 0.85rem;
 	white-space: pre-wrap;
 	word-break: break-word;
-	color: #3f3f39;
+	color: var(--muted);
 	font-size: 0.82rem;
 }
 
@@ -871,7 +869,7 @@ textarea {
 .notice {
 	width: min(48rem, calc(100% - 2rem));
 	margin: 0 auto 0.4rem;
-	background: #f8e8e2;
+	background: var(--td-error-color-light);
 	color: var(--danger);
 	border-radius: 0.75rem;
 	padding: 0.55rem 0.8rem;
@@ -912,12 +910,10 @@ textarea {
 }
 
 .composer-shell.welcome .composer {
-	display: grid;
-	grid-template-columns: 1fr auto;
-	align-items: center;
-	gap: 0.4rem 0.5rem;
+	display: flex;
+	flex-direction: column;
 	min-height: 8.4rem;
-	padding: 0.85rem 0.85rem 0.7rem 1rem;
+	padding: 0.85rem 0.85rem 0.5rem 1rem;
 	border: 0;
 	box-shadow: none;
 }
@@ -928,8 +924,8 @@ textarea {
 }
 
 .composer:focus-within {
-	border-color: #d2d2cb;
-	box-shadow: 0 0 0 3px rgba(14, 14, 12, 0.04);
+	border-color: var(--td-brand-color);
+	box-shadow: 0 0 0 2px var(--td-brand-color-focus);
 }
 
 .composer-shell.welcome .composer:focus-within {
@@ -949,8 +945,9 @@ textarea {
 }
 
 .composer-shell.welcome textarea {
-	min-height: 6.6rem;
-	padding: 0.2rem 0.15rem;
+	flex: 1;
+	min-height: 4.4rem;
+	padding: 0.2rem 0.15rem 0.35rem;
 }
 
 .composer-bar {
@@ -968,12 +965,13 @@ textarea {
 }
 
 .composer-shell.welcome .composer-bar {
-	align-self: center;
+	margin-top: auto;
+	align-self: stretch;
 	padding: 0;
 }
 
 .composer-shell.welcome .composer-bar-end {
-	margin-left: 0;
+	margin-left: auto;
 }
 
 .composer-meta {
@@ -1009,13 +1007,13 @@ textarea {
 .icon-btn.primary {
 	width: 1.95rem;
 	height: 1.95rem;
-	background: var(--ink);
-	color: var(--bg);
+	background: var(--brand);
+	color: var(--td-text-color-anti);
 }
 
 .icon-btn.primary:hover:not(:disabled) {
-	background: #2a2a26;
-	color: var(--bg);
+	background: var(--td-brand-color-hover);
+	color: var(--td-text-color-anti);
 }
 
 .icon-btn:disabled {
@@ -1023,8 +1021,8 @@ textarea {
 }
 
 .icon-btn.primary:disabled {
-	background: #d0d0cb;
-	color: #fff;
+	background: var(--td-brand-color-disabled);
+	color: var(--td-text-color-anti);
 	opacity: 1;
 }
 
@@ -1113,9 +1111,9 @@ textarea {
 }
 
 .approval-allow {
-	background: var(--ink);
-	color: var(--bg);
-	border-color: var(--ink);
+	background: var(--brand);
+	color: var(--td-text-color-anti);
+	border-color: var(--brand);
 }
 
 .approval-deny:hover {
@@ -1123,25 +1121,16 @@ textarea {
 }
 
 .approval-allow:hover {
-	background: #2a2a26;
-}
-
-.dialog-root {
-	position: fixed;
-	inset: 0;
-	z-index: 40;
-	display: grid;
-	place-items: center;
-	padding: 1.25rem;
-}
-
-.confirm-root {
-	z-index: 50;
+	background: var(--td-brand-color-hover);
 }
 
 .confirm {
-	position: relative;
-	width: min(26.5rem, 100%);
+	position: fixed;
+	z-index: 51;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: min(26.5rem, calc(100% - 2rem));
 	background: var(--surface);
 	border-radius: 1.15rem;
 	padding: 1.4rem 1.45rem 1.2rem;
@@ -1203,16 +1192,24 @@ textarea {
 }
 
 .dialog-scrim {
-	position: absolute;
+	position: fixed;
 	inset: 0;
+	z-index: 40;
 	border: 0;
 	background: rgba(14, 14, 12, 0.28);
-	cursor: pointer;
+}
+
+.confirm-scrim {
+	z-index: 50;
 }
 
 .dialog {
-	position: relative;
-	width: min(52rem, 100%);
+	position: fixed;
+	z-index: 41;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: min(52rem, calc(100% - 2.5rem));
 	max-height: min(40rem, calc(100vh - 2.5rem));
 	background: var(--surface);
 	border: 1px solid var(--line);
@@ -1391,8 +1388,8 @@ textarea {
 
 .settings-submit {
 	border: 0;
-	background: var(--ink);
-	color: var(--bg);
+	background: var(--brand);
+	color: var(--td-text-color-anti);
 	border-radius: 0.6rem;
 	padding: 0.5rem 0.7rem;
 	cursor: pointer;
@@ -1400,7 +1397,7 @@ textarea {
 }
 
 .settings-submit:hover {
-	background: #2a2a26;
+	background: var(--td-brand-color-hover);
 }
 
 .archive-row {
@@ -1520,4 +1517,28 @@ textarea {
 
 .popover-item-edit:hover {
 	color: var(--ink);
+}
+
+.t-dialog.settings-dialog {
+	max-height: min(40rem, calc(100vh - 2.5rem));
+}
+
+.t-dialog.settings-dialog .t-dialog__header {
+	padding: 0.85rem 1.1rem;
+	margin: 0;
+	border-bottom: 1px solid var(--line);
+}
+
+.t-dialog.settings-dialog .t-dialog__body {
+	padding: 0;
+	overflow: hidden;
+}
+
+.t-dialog.settings-dialog .dialog-body {
+	min-height: 28rem;
+	max-height: min(34rem, calc(100vh - 8rem));
+}
+
+.t-popup__content.popover {
+	box-sizing: border-box;
 }

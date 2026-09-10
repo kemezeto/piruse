@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { FolderAddIcon, FolderIcon, GitBranchIcon, MenuFoldIcon, MenuUnfoldIcon, SettingIcon } from "tdesign-icons-react";
 import type { ViewProjectOption, ViewSessionOption } from "@protocol/view";
 import { ConfirmDialog } from "../dialog/Confirm";
 import { ChatRow } from "./ChatRow";
@@ -75,7 +76,7 @@ export function Sidebar({
 					title={collapsed ? "展开菜单" : "收缩菜单"}
 					onClick={() => onCollapsed(!collapsed)}
 				>
-					<PanelIcon />
+					{collapsed ? <MenuUnfoldIcon size={16} /> : <MenuFoldIcon size={16} />}
 				</button>
 				<button
 					type="button"
@@ -84,7 +85,7 @@ export function Sidebar({
 					title={running ? "请先停止当前运行" : "新建对话"}
 					onClick={onNewChat}
 				>
-					<BranchIcon />
+					<GitBranchIcon size={16} />
 					{collapsed ? null : <span>New Chat</span>}
 				</button>
 			</div>
@@ -101,7 +102,7 @@ export function Sidebar({
 								title={running ? "请先停止当前运行" : "选择目录开启项目"}
 								onClick={() => setOpenPath((current) => !current)}
 							>
-								<AddFolderIcon />
+								<FolderAddIcon size={16} />
 							</button>
 							{openPath ? (
 								<form
@@ -139,7 +140,7 @@ export function Sidebar({
 										title={project.cwd}
 										onClick={() => toggleProject(project.cwd, project.sessionCount)}
 									>
-										<FolderIcon />
+										<FolderIcon size={14} />
 										<span>{project.name}</span>
 									</button>
 									{open
@@ -169,7 +170,7 @@ export function Sidebar({
 			<div className="sidebar-foot">
 				{collapsed ? null : <span className="sidebar-mark">π</span>}
 				<button type="button" className="sidebar-settings" aria-label="Settings" title="Settings" onClick={onSettings}>
-					<GearIcon />
+					<SettingIcon size={16} />
 				</button>
 			</div>
 			<ConfirmDialog
@@ -213,63 +214,3 @@ export function writeSidebarCollapsed(collapsed: boolean): void {
 	}
 }
 
-function PanelIcon() {
-	return (
-		<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-			<rect x="1.75" y="2.25" width="12.5" height="11.5" rx="1.6" stroke="currentColor" strokeWidth="1.3" />
-			<path d="M6.25 2.25v11.5" stroke="currentColor" strokeWidth="1.3" />
-		</svg>
-	);
-}
-
-function BranchIcon() {
-	return (
-		<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-			<circle cx="4.2" cy="3.4" r="1.45" stroke="currentColor" strokeWidth="1.3" />
-			<circle cx="4.2" cy="12.6" r="1.45" stroke="currentColor" strokeWidth="1.3" />
-			<circle cx="11.8" cy="8" r="1.45" stroke="currentColor" strokeWidth="1.3" />
-			<path d="M4.2 4.85v6.3M5.55 3.9c2.4.15 4.4 1.7 5.1 3.55" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-		</svg>
-	);
-}
-
-function AddFolderIcon() {
-	return (
-		<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-			<path
-				d="M2.2 4.4h4.1l1.15 1.2H13.8v7.1H2.2V4.4Z"
-				stroke="currentColor"
-				strokeWidth="1.3"
-				strokeLinejoin="round"
-			/>
-			<path d="M9.6 8.2v3.4M7.9 9.9h3.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-		</svg>
-	);
-}
-
-function FolderIcon() {
-	return (
-		<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-			<path
-				d="M2.2 4.5h4.05l1.1 1.15H13.8v7.05H2.2V4.5Z"
-				stroke="currentColor"
-				strokeWidth="1.3"
-				strokeLinejoin="round"
-			/>
-		</svg>
-	);
-}
-
-function GearIcon() {
-	return (
-		<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-			<path
-				d="M6.4 1.7h3.2l.35 1.55a4.8 4.8 0 0 1 1.2.7L12.7 3l1.6 2.77-1.2 1.05c.08.4.13.8.13 1.18s-.05.79-.13 1.18l1.2 1.05L12.7 13l-1.55-1.02a4.8 4.8 0 0 1-1.2.7L9.6 14.3H6.4l-.35-1.62a4.8 4.8 0 0 1-1.2-.7L3.3 13 1.7 10.23l1.2-1.05A5.4 5.4 0 0 1 2.77 8c0-.4.05-.79.13-1.18L1.7 5.77 3.3 3l1.55 1.02c.37-.3.77-.53 1.2-.7L6.4 1.7Z"
-				stroke="currentColor"
-				strokeWidth="1.3"
-				strokeLinejoin="round"
-			/>
-			<circle cx="8" cy="8" r="2.05" stroke="currentColor" strokeWidth="1.3" />
-		</svg>
-	);
-}
