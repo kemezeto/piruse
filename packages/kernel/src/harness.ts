@@ -293,7 +293,25 @@ export class Operator implements BootedHarness {
 	}
 
 	async listProjects(): Promise<ViewProjectOption[]> {
-		return projectsFromSessions(await this.liveSessions(), this.cwd);
+		const listed = await this.liveSessions();
+		listed.sort((left, right) => right.modifiedAt - left.modifiedAt);
+		const titles = await this.titlesFor(listed);
+		const currentName = await this.sessionTitle();
+		const currentId = this.session.metadata.id;
+		const grouped = new Map<string, typeof listed>();
+		for (const entry of listed) {
+			const bucket = grouped.get(entry.cwd) ?? [];
+			if (bucket.length < 80) bucket.push(entry);
+			grouped.set(entry.cwd, bucket);
+		}
+		return projectsFromSessions(listed, this.cwd).map((project) => ({
+			...project,
+			sessions: (grouped.get(project.cwd) ?? []).map((entry) => ({
+				id: entry.id,
+				title: entry.id === currentId ? currentName : (titles.get(entry.id) ?? shortId(entry.id)),
+				modifiedAt: entry.modifiedAt,
+			})),
+		}));
 	}
 
 	async sessionTitle(): Promise<string> {

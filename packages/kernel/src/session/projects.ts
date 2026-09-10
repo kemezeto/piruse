@@ -60,6 +60,7 @@ export function projectsFromSessions(sessions: JsonlSessionMetadata[], currentCw
 				name: projectName(session.cwd),
 				sessionCount: 1,
 				modifiedAt: session.modifiedAt,
+				sessions: [],
 			});
 			continue;
 		}
@@ -72,6 +73,7 @@ export function projectsFromSessions(sessions: JsonlSessionMetadata[], currentCw
 			name: projectName(currentCwd),
 			sessionCount: 0,
 			modifiedAt: Date.now(),
+			sessions: [],
 		});
 	}
 	return [...byCwd.values()].sort((left, right) => right.modifiedAt - left.modifiedAt).slice(0, 40);

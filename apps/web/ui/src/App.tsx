@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Markdown from "react-markdown";
 import type { ViewItem, ViewState } from "@protocol/view";
-import { ApprovalList, ModelPicker, PermissionPicker, ProjectPicker, SessionPicker } from "./Picker";
-import { SettingsButton, SettingsDialog } from "./Settings";
+import { ApprovalList, ModelPicker, PermissionPicker, ProjectPicker } from "./Picker";
+import { SettingsDialog } from "./Settings";
+import { readSidebarCollapsed, Sidebar, writeSidebarCollapsed } from "./Sidebar";
 
 type Line = "connecting" | "live" | "reconnecting";
 
@@ -11,6 +12,7 @@ export function App() {
 	const [notice, setNotice] = useState("");
 	const [line, setLine] = useState<Line>("connecting");
 	const [settingsOpen, setSettingsOpen] = useState(false);
+	const [collapsed, setCollapsed] = useState(readSidebarCollapsed);
 	const socketRef = useRef<WebSocket | null>(null);
 	const stageRef = useRef<HTMLDivElement>(null);
 
@@ -50,7 +52,6 @@ export function App() {
 	}, [state?.items]);
 
 	const empty = !state || state.items.length === 0;
-	const projectName = state?.projects?.find((project) => project.cwd === state.cwd)?.name;
 	const send = (text: string): void => {
 		const socket = socketRef.current;
 		if (!text.trim() || socket?.readyState !== WebSocket.OPEN) return;
@@ -66,75 +67,109 @@ export function App() {
 	const abort = (): void => {
 		command({ type: "abort" });
 	};
+	const setSidebarCollapsed = (next: boolean): void => {
+		setCollapsed(next);
+		writeSidebarCollapsed(next);
+	};
+	const modelPicker = state ? (
+		<ModelPicker
+			current={state.model}
+			models={state.models}
+			onSelect={(model) =>
+				command({ type: "setModel", provider: model.provider, modelId: model.modelId })
+			}
+		/>
+	) : null;
+	const workspacePicker = state ? (
+		<ProjectPicker
+			cwd={state.cwd}
+			projects={state.projects ?? []}
+			running={state.running}
+			onOpen={(cwd) => command({ type: "openProject", cwd })}
+		/>
+	) : null;
+	const permissionPicker = state ? (
+		<PermissionPicker
+			mode={state.permissionMode ?? "review"}
+			onSelect={(mode) => command({ type: "setPermissionMode", mode })}
+		/>
+	) : null;
 
 	return (
-		<div className="app">
-			<header className="topbar">
-				<div className="brand">
-					<span className="brand-mark">π</span>
-					piruse
-				</div>
-				<div className="status">
-					<i className={`dot${line === "live" ? " live" : ""}`} />
-					{state ? (
-						<>
-							<ProjectPicker
-								cwd={state.cwd}
-								projects={state.projects ?? []}
-								running={state.running}
-								onOpen={(cwd) => command({ type: "openProject", cwd })}
+		<div className={`app${collapsed ? " collapsed" : ""}`}>
+			<Sidebar
+				cwd={state?.cwd ?? ""}
+				sessionId={state?.sessionId ?? ""}
+				projects={state?.projects ?? []}
+				running={Boolean(state?.running)}
+				collapsed={collapsed}
+				onCollapsed={setSidebarCollapsed}
+				onNewChat={() => command({ type: "newSession" })}
+				onOpenProject={(cwd) => command({ type: "openProject", cwd })}
+				onOpenSession={(sessionId) => command({ type: "openSession", sessionId })}
+				onSettings={() => setSettingsOpen(true)}
+			/>
+			<main className={`workspace${empty ? " is-empty" : ""}`}>
+				{empty ? null : (
+					<header className="workspace-head">
+						<div className="workspace-title">
+							{line !== "live" ? <i className="dot" /> : null}
+							<span>{state?.sessionTitle ?? "piruse"}</span>
+						</div>
+					</header>
+				)}
+				<div className="stage" ref={stageRef}>
+					{empty ? (
+						<div className="welcome">
+							<h1>piruse, 我帮你</h1>
+							<ApprovalList
+								items={state?.pendingApprovals ?? []}
+								onAllow={(id) => command({ type: "approveTool", id })}
+								onDeny={(id) => command({ type: "denyTool", id })}
 							/>
-							<SessionPicker
-								currentId={state.sessionId}
-								title={state.sessionTitle}
-								sessions={state.sessions}
-								running={state.running}
-								onOpen={(sessionId) => command({ type: "openSession", sessionId })}
-								onNew={() => command({ type: "newSession" })}
-								onArchive={() => command({ type: "archiveSession", sessionId: state.sessionId })}
-								onRename={(sessionId, title) => command({ type: "setSessionTitle", sessionId, title })}
+							{notice ? <p className="notice">{notice}</p> : null}
+							<Composer
+								layout="welcome"
+								running={Boolean(state?.running)}
+								onSend={send}
+								onAbort={abort}
+								autoFocus
+								model={modelPicker}
+								workspace={workspacePicker}
+								permission={permissionPicker}
 							/>
-							<ModelPicker
-								current={state.model}
-								models={state.models}
-								onSelect={(model) =>
-									command({ type: "setModel", provider: model.provider, modelId: model.modelId })
-								}
-							/>
-							<PermissionPicker
-								mode={state.permissionMode ?? "review"}
-								onSelect={(mode) => command({ type: "setPermissionMode", mode })}
-							/>
-						</>
+						</div>
 					) : (
-						<span>…</span>
+						<div className="column">
+							<div className="thread">
+								{state.items.map((item) => (
+									<Item key={item.id} item={item} />
+								))}
+							</div>
+						</div>
 					)}
 				</div>
-			</header>
-			<div className="stage" ref={stageRef}>
-				{empty ? (
-					<div className="empty">
-						<h1>Ask anything about {projectName ?? "this project"}</h1>
+				{empty ? null : (
+					<div className="dock">
+						{notice ? <p className="notice">{notice}</p> : null}
 						<ApprovalList
-							items={state?.pendingApprovals ?? []}
+							items={state.pendingApprovals ?? []}
 							onAllow={(id) => command({ type: "approveTool", id })}
 							onDeny={(id) => command({ type: "denyTool", id })}
 						/>
-						<Composer running={Boolean(state?.running)} onSend={send} onAbort={abort} autoFocus />
-						<p className="hint">Enter 发送 · Shift+Enter 换行 · 仅本机 127.0.0.1</p>
-					</div>
-				) : (
-					<div className="column">
-						<div className="thread">
-							{state.items.map((item) => (
-								<Item key={item.id} item={item} />
-							))}
-						</div>
+						<Composer
+							layout="chat"
+							running={state.running}
+							onSend={send}
+							onAbort={abort}
+							model={modelPicker}
+							workspace={null}
+							permission={permissionPicker}
+						/>
+						<p className="hint">内容由 AI 生成，请核实重要信息</p>
 					</div>
 				)}
-			</div>
-			{notice ? <p className="notice">{notice}</p> : null}
-			<SettingsButton onClick={() => setSettingsOpen(true)} />
+			</main>
 			<SettingsDialog
 				open={settingsOpen}
 				providers={state?.providers ?? []}
@@ -146,17 +181,6 @@ export function App() {
 				onClose={() => setSettingsOpen(false)}
 				onCommand={command}
 			/>
-			{empty ? null : (
-				<div className="dock">
-					<ApprovalList
-						items={state.pendingApprovals ?? []}
-						onAllow={(id) => command({ type: "approveTool", id })}
-						onDeny={(id) => command({ type: "denyTool", id })}
-					/>
-					<Composer running={state.running} onSend={send} onAbort={abort} />
-					<p className="hint">Enter 发送 · Shift+Enter 换行 · 仅本机 127.0.0.1</p>
-				</div>
-			)}
 		</div>
 	);
 }
@@ -172,7 +196,15 @@ function Item({ item }: { item: ViewItem }) {
 	if (item.kind === "assistant") {
 		return (
 			<div className="turn assistant">
-				<div className="kicker">{item.streaming ? "Working" : "piruse"}</div>
+				<div className="assistant-head">
+					<span className="assistant-avatar" aria-hidden="true">
+						π
+					</span>
+					<div className="assistant-who">
+						<div className="assistant-name">piruse</div>
+						<div className="assistant-status">{item.streaming ? "正在回复…" : "已完成 ›"}</div>
+					</div>
+				</div>
 				<div className="md">
 					<Markdown>{item.text || " "}</Markdown>
 				</div>
@@ -197,56 +229,76 @@ function Item({ item }: { item: ViewItem }) {
 }
 
 function Composer({
+	layout,
 	running,
 	onSend,
 	onAbort,
 	autoFocus = false,
+	model,
+	workspace,
+	permission,
 }: {
+	layout: "welcome" | "chat";
 	running: boolean;
 	onSend: (text: string) => void;
 	onAbort: () => void;
 	autoFocus?: boolean;
+	model: ReactNode;
+	workspace: ReactNode;
+	permission: ReactNode;
 }) {
 	const [text, setText] = useState("");
 	const canSend = useMemo(() => text.trim().length > 0 && !running, [text, running]);
 	return (
-		<form
-			className="composer"
-			onSubmit={(event) => {
-				event.preventDefault();
-				if (!canSend) return;
-				onSend(text);
-				setText("");
-			}}
-		>
-			<textarea
-				value={text}
-				autoFocus={autoFocus}
-				placeholder="Ask to inspect, edit, or run something…"
-				rows={1}
-				onChange={(event) => setText(event.target.value)}
-				onKeyDown={(event) => {
-					if (event.key === "Enter" && !event.shiftKey) {
-						event.preventDefault();
-						if (canSend) {
-							onSend(text);
-							setText("");
-						}
-					}
+		<div className={`composer-shell ${layout}`}>
+			<form
+				className="composer"
+				onSubmit={(event) => {
+					event.preventDefault();
+					if (!canSend) return;
+					onSend(text);
+					setText("");
 				}}
-			/>
-			<div className="actions">
-				{running ? (
-					<button type="button" className="icon-btn primary" title="Stop" aria-label="Stop" onClick={onAbort}>
-						<StopIcon />
-					</button>
-				) : (
-					<button type="submit" className="icon-btn primary" title="Send" aria-label="Send" disabled={!canSend}>
-						<ArrowIcon />
-					</button>
-				)}
-			</div>
-		</form>
+			>
+				<textarea
+					value={text}
+					autoFocus={autoFocus}
+					placeholder=""
+					rows={1}
+					onChange={(event) => setText(event.target.value)}
+					onKeyDown={(event) => {
+						if (event.key === "Enter" && !event.shiftKey) {
+							event.preventDefault();
+							if (canSend) {
+								onSend(text);
+								setText("");
+							}
+						}
+					}}
+				/>
+				<div className="composer-bar">
+					{layout === "chat" ? permission : null}
+					<div className="composer-bar-end">
+						{model}
+						{running ? (
+							<button type="button" className="icon-btn primary" title="Stop" aria-label="Stop" onClick={onAbort}>
+								<StopIcon />
+							</button>
+						) : (
+							<button type="submit" className="icon-btn primary" title="Send" aria-label="Send" disabled={!canSend}>
+								<ArrowIcon />
+							</button>
+						)}
+					</div>
+				</div>
+			</form>
+			{layout === "welcome" ? (
+				<div className="composer-meta">
+					{workspace}
+					{permission}
+				</div>
+			) : null}
+		</div>
 	);
 }
 

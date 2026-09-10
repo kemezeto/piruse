@@ -22,18 +22,24 @@ export function relativeTime(ms: number): string {
 function Menu({
 	align = "right",
 	wide = false,
+	drop = "down",
+	variant = "stacked",
 	label,
 	value,
 	hint,
 	disabled,
+	icon,
 	children,
 }: {
 	align?: "left" | "right";
 	wide?: boolean;
+	drop?: "down" | "up";
+	variant?: "stacked" | "inline";
 	label: string;
 	value: string;
 	hint?: string;
 	disabled?: boolean;
+	icon?: ReactNode;
 	children: (close: () => void) => ReactNode;
 }) {
 	const [open, setOpen] = useState(false);
@@ -59,18 +65,24 @@ function Menu({
 		<div className={`menu${open ? " open" : ""}`} ref={rootRef}>
 			<button
 				type="button"
-				className="menu-btn"
+				className={`menu-btn${variant === "inline" ? " inline" : ""}`}
 				disabled={disabled}
 				aria-haspopup="listbox"
 				aria-expanded={open}
 				aria-label={label}
-				title={disabled ? "Stop the run first" : hint ?? value}
+				title={disabled ? "请先停止当前运行" : hint ?? value}
 				onClick={() => setOpen((current) => !current)}
 			>
-				<span className="menu-label">{label}</span>
+				{icon}
+				{variant === "stacked" ? <span className="menu-label">{label}</span> : null}
 				<span className="menu-value">{value}</span>
+				{variant === "inline" ? <ChevronIcon /> : null}
 			</button>
-			{open ? <div className={`popover ${align}${wide ? " wide" : ""}`}>{children(() => setOpen(false))}</div> : null}
+			{open ? (
+				<div className={`popover ${align}${wide ? " wide" : ""}${drop === "up" ? " up" : ""}`}>
+					{children(() => setOpen(false))}
+				</div>
+			) : null}
 		</div>
 	);
 }
@@ -88,9 +100,19 @@ export function ProjectPicker({
 }) {
 	const [path, setPath] = useState("");
 	const current = projects.find((project) => project.cwd === cwd);
-	const label = current?.name ?? basenameOf(cwd);
+	const name = current?.name ?? (cwd ? basenameOf(cwd) : "选择工作空间");
 	return (
-		<Menu align="right" wide label="Project" value={label} hint={cwd} disabled={running}>
+		<Menu
+			align="left"
+			wide
+			drop="up"
+			variant="inline"
+			label="选择工作空间"
+			value="选择工作空间"
+			hint={cwd ? `${name} · ${cwd}` : "选择工作目录"}
+			icon={<FolderGlyph />}
+			disabled={running}
+		>
 			{(close) => (
 				<>
 					<form
@@ -108,11 +130,11 @@ export function ProjectPicker({
 							className="popover-search"
 							value={path}
 							autoFocus
-							placeholder="Open folder path…"
+							placeholder="项目目录路径…"
 							onChange={(event) => setPath(event.target.value)}
 						/>
 						<button type="submit" className="popover-open-go" disabled={!path.trim()}>
-							Open
+							打开
 						</button>
 					</form>
 					<div className="popover-list" role="listbox" aria-label="Projects">
@@ -290,7 +312,14 @@ export function ModelPicker({
 	}, [models, query]);
 
 	return (
-		<Menu align="right" label="Model" value={current.modelId}>
+		<Menu
+			align="right"
+			drop="up"
+			variant="inline"
+			label="模型"
+			icon={<SparkleGlyph />}
+			value={models.find((model) => model.provider === current.provider && model.modelId === current.modelId)?.name ?? current.modelId}
+		>
 			{(close) => (
 				<>
 					<input
@@ -347,7 +376,16 @@ export function PermissionPicker({
 	onSelect: (mode: PermissionMode) => void;
 }) {
 	return (
-		<Menu align="right" wide label="权限" value={PERMISSIONS.find((entry) => entry.mode === mode)?.label ?? mode}>
+		<Menu
+			align="left"
+			wide
+			drop="up"
+			variant="inline"
+			label="默认权限"
+			value="默认权限"
+			hint={PERMISSIONS.find((entry) => entry.mode === mode)?.hint ?? mode}
+			icon={<CheckGlyph />}
+		>
 			{(close) => (
 				<div className="popover-list" role="listbox" aria-label="Permission mode">
 					{PERMISSIONS.map((entry) => (
@@ -378,6 +416,49 @@ function reasonLabel(reason: ViewApproval["reason"]): string {
 	if (reason === "mutate") return "改文件";
 	if (reason === "dangerous") return "危险命令";
 	return "跑命令";
+}
+
+function ChevronIcon() {
+	return (
+		<svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+			<path d="M2.1 3.6 5 6.5l2.9-2.9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+		</svg>
+	);
+}
+
+function FolderGlyph() {
+	return (
+		<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+			<path
+				d="M2.2 4.5h4.05l1.1 1.15H13.8v7.05H2.2V4.5Z"
+				stroke="currentColor"
+				strokeWidth="1.3"
+				strokeLinejoin="round"
+			/>
+		</svg>
+	);
+}
+
+function SparkleGlyph() {
+	return (
+		<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+			<path
+				d="M8 1.6 8.95 6.05 13.4 7 8.95 7.95 8 12.4 7.05 7.95 2.6 7 7.05 6.05 8 1.6Z"
+				stroke="currentColor"
+				strokeWidth="1.2"
+				strokeLinejoin="round"
+			/>
+		</svg>
+	);
+}
+
+function CheckGlyph() {
+	return (
+		<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+			<circle cx="8" cy="8" r="5.4" stroke="currentColor" strokeWidth="1.3" />
+			<path d="M5.3 8.15 7.15 10l3.6-4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+		</svg>
+	);
 }
 
 export function ApprovalList({

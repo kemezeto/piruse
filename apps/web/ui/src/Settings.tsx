@@ -18,7 +18,7 @@ type Pane = "appearance" | "models" | "archive";
 
 export function SettingsButton({ onClick }: { onClick: () => void }) {
 	return (
-		<button type="button" className="settings-fab" aria-label="Settings" title="Settings" onClick={onClick}>
+		<button type="button" className="sidebar-settings" aria-label="Settings" title="Settings" onClick={onClick}>
 			<GearIcon />
 		</button>
 	);

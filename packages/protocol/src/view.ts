@@ -40,6 +40,7 @@ export interface ViewProjectOption {
 	name: string;
 	sessionCount: number;
 	modifiedAt: number;
+	sessions: ViewSessionOption[];
 }
 
 export type PermissionMode = "read" | "review" | "allow";
