@@ -1,5 +1,5 @@
 import { type ReactNode, useState } from "react";
-import { ChevronRightIcon } from "tdesign-icons-react";
+import { ChevronDownIcon } from "tdesign-icons-react";
 import { Popup } from "tdesign-react";
 
 export function Menu({
@@ -54,7 +54,7 @@ export function Menu({
 				{icon}
 				{variant === "stacked" ? <span className="menu-label">{label}</span> : null}
 				<span className="menu-value">{value}</span>
-				<ChevronRightIcon size={12} className={`caret${open ? " open" : ""}`} aria-hidden="true" />
+				<ChevronDownIcon size={12} className={`caret-flip${open ? " open" : ""}`} aria-hidden="true" />
 			</button>
 		</Popup>
 	);

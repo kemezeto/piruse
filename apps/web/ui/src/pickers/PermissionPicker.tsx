@@ -15,6 +15,7 @@ export function PermissionPicker({
 	mode: PermissionMode;
 	onSelect: (mode: PermissionMode) => void;
 }) {
+	const current = PERMISSIONS.find((entry) => entry.mode === mode) ?? PERMISSIONS[1];
 	return (
 		<Menu
 			align="left"
@@ -22,8 +23,8 @@ export function PermissionPicker({
 			drop="up"
 			variant="inline"
 			label="默认权限"
-			value="默认权限"
-			hint={PERMISSIONS.find((entry) => entry.mode === mode)?.hint ?? mode}
+			value={current.label}
+			hint={current.hint}
 			icon={<SecuredIcon size={14} />}
 		>
 			{(close) => (

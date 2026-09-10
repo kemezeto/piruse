@@ -473,7 +473,8 @@ textarea {
 	cursor: not-allowed;
 }
 
-.caret {
+.caret,
+.caret-flip {
 	flex: none;
 	color: var(--muted);
 	transform: rotate(0deg);
@@ -485,8 +486,13 @@ textarea {
 	transform: rotate(90deg);
 }
 
+.caret-flip.open {
+	transform: rotate(180deg);
+}
+
 @media (prefers-reduced-motion: reduce) {
-	.caret {
+	.caret,
+	.caret-flip {
 		transition: none;
 	}
 }
@@ -536,19 +542,21 @@ textarea {
 
 .popover {
 	z-index: 30;
-	width: min(22rem, 70vw);
+	width: min(16.5rem, 72vw);
 	background: var(--surface);
 	border: 1px solid var(--line);
 	border-radius: var(--td-radius-medium, 6px);
 	box-shadow: var(--shadow);
-	padding: 0.45rem;
+	padding: 0.32rem;
 	display: flex;
 	flex-direction: column;
-	gap: 0.35rem;
+	gap: 0.28rem;
+	font-size: 0.78rem;
+	line-height: 1.4;
 }
 
 .popover.wide {
-	width: min(28rem, 80vw);
+	width: min(20rem, 80vw);
 }
 
 .popover-open {
@@ -561,10 +569,11 @@ textarea {
 	border: 1px solid var(--line);
 	background: var(--ink);
 	color: var(--bg);
-	border-radius: 0.65rem;
-	padding: 0.45rem 0.7rem;
+	border-radius: 0.5rem;
+	padding: 0.32rem 0.55rem;
 	cursor: pointer;
 	font-weight: 550;
+	font-size: 0.78rem;
 }
 
 .popover-open-go:disabled {
@@ -584,7 +593,7 @@ textarea {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	color: var(--muted);
-	font-size: 0.68rem;
+	font-size: 0.62rem;
 	font-family: "Source Code Pro", ui-monospace, monospace;
 }
 
@@ -593,9 +602,10 @@ textarea {
 	width: 100%;
 	border: 1px solid var(--line);
 	background: var(--bg);
-	border-radius: 0.65rem;
-	padding: 0.45rem 0.65rem;
+	border-radius: 0.5rem;
+	padding: 0.32rem 0.5rem;
 	color: var(--ink);
+	font-size: 0.78rem;
 }
 
 .popover-search {
@@ -618,16 +628,16 @@ textarea {
 }
 
 .popover-list {
-	max-height: 18rem;
+	max-height: 15rem;
 	overflow: auto;
 	display: flex;
 	flex-direction: column;
-	gap: 0.15rem;
+	gap: 0.1rem;
 }
 
 .popover-group-label {
-	padding: 0.4rem 0.55rem 0.15rem;
-	font-size: 0.68rem;
+	padding: 0.28rem 0.45rem 0.08rem;
+	font-size: 0.62rem;
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
 	color: var(--muted);
@@ -640,12 +650,13 @@ textarea {
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;
-	gap: 0.7rem;
-	padding: 0.45rem 0.55rem;
-	border-radius: 0.6rem;
+	gap: 0.55rem;
+	padding: 0.32rem 0.45rem;
+	border-radius: 0.45rem;
 	cursor: pointer;
 	text-align: left;
 	color: var(--ink);
+	font-size: 0.78rem;
 }
 
 .popover-item:hover,
@@ -657,12 +668,14 @@ textarea {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	font-size: 0.78rem;
 	font-weight: 550;
+	font-family: inherit;
 }
 
 .popover-item-meta {
 	color: var(--muted);
-	font-size: 0.72rem;
+	font-size: 0.62rem;
 	flex: none;
 	font-family: "Source Code Pro", ui-monospace, monospace;
 }
@@ -1581,4 +1594,6 @@ textarea {
 
 .t-popup__content.popover {
 	box-sizing: border-box;
+	font-size: 0.78rem;
+	line-height: 1.4;
 }

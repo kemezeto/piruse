@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { StarIcon } from "tdesign-icons-react";
+import { Robot2Icon } from "tdesign-icons-react";
 import type { ViewModelOption } from "@protocol/view";
 import { Menu } from "./Menu";
 
@@ -35,7 +35,7 @@ export function ModelPicker({
 			drop="up"
 			variant="inline"
 			label="模型"
-			icon={<StarIcon size={14} />}
+			icon={<Robot2Icon size={14} />}
 			value={models.find((model) => model.provider === current.provider && model.modelId === current.modelId)?.name ?? current.modelId}
 		>
 			{(close) => (
@@ -66,8 +66,10 @@ export function ModelPicker({
 												close();
 											}}
 										>
-											<span className="popover-item-title">{model.name}</span>
-											<span className="popover-item-meta">{model.modelId}</span>
+											<span className="popover-item-copy">
+												<span className="popover-item-title">{model.name}</span>
+												<span className="popover-item-path">{model.modelId}</span>
+											</span>
 										</button>
 									);
 								})}
