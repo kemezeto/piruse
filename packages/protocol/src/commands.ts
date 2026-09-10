@@ -11,6 +11,7 @@ export type ClientMessage =
 	| { type: "archiveSession"; sessionId?: string }
 	| { type: "unarchiveSession"; sessionId?: string }
 	| { type: "deleteArchivedSession"; sessionId?: string }
+	| { type: "setSessionTitle"; sessionId?: string; title?: string }
 	| { type: "setPermissionMode"; mode?: PermissionMode }
 	| { type: "approveTool"; id?: string }
 	| { type: "denyTool"; id?: string }

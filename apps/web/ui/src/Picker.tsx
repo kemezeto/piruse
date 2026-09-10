@@ -159,6 +159,7 @@ export function SessionPicker({
 	onOpen,
 	onNew,
 	onArchive,
+	onRename,
 }: {
 	currentId: string;
 	title: string;
@@ -167,7 +168,19 @@ export function SessionPicker({
 	onOpen: (sessionId: string) => void;
 	onNew: () => void;
 	onArchive: () => void;
+	onRename: (sessionId: string, title: string) => void;
 }) {
+	const [renamingId, setRenamingId] = useState<string | null>(null);
+	const [draft, setDraft] = useState("");
+	const startRename = (sessionId: string, current: string): void => {
+		setRenamingId(sessionId);
+		setDraft(current);
+	};
+	const saveRename = (): void => {
+		const next = draft.trim();
+		if (renamingId && next) onRename(renamingId, next);
+		setRenamingId(null);
+	};
 	return (
 		<Menu align="right" label="Chat" value={title} disabled={running}>
 			{(close) => (
@@ -192,23 +205,56 @@ export function SessionPicker({
 					>
 						归档当前对话
 					</button>
+					<button type="button" className="popover-new" onClick={() => startRename(currentId, title)}>
+						重命名当前对话
+					</button>
+					{renamingId ? (
+						<form
+							className="popover-open"
+							onSubmit={(event) => {
+								event.preventDefault();
+								saveRename();
+							}}
+						>
+							<input
+								className="popover-search"
+								value={draft}
+								autoFocus
+								maxLength={80}
+								placeholder="对话标题"
+								onChange={(event) => setDraft(event.target.value)}
+							/>
+							<button type="submit" className="popover-open-go" disabled={!draft.trim()}>
+								保存
+							</button>
+						</form>
+					) : null}
 					<div className="popover-list" role="listbox" aria-label="Chats">
 						{sessions.length === 0 ? <p className="popover-empty">No chats in this project</p> : null}
 						{sessions.map((session) => (
-							<button
-								type="button"
-								key={session.id}
-								role="option"
-								aria-selected={session.id === currentId}
-								className={`popover-item${session.id === currentId ? " active" : ""}`}
-								onClick={() => {
-									if (session.id !== currentId) onOpen(session.id);
-									close();
-								}}
-							>
-								<span className="popover-item-title">{session.title}</span>
-								<span className="popover-item-meta">{relativeTime(session.modifiedAt)}</span>
-							</button>
+							<div key={session.id} className={`popover-item-row${session.id === currentId ? " active" : ""}`}>
+								<button
+									type="button"
+									role="option"
+									aria-selected={session.id === currentId}
+									className={`popover-item${session.id === currentId ? " active" : ""}`}
+									onClick={() => {
+										if (session.id !== currentId) onOpen(session.id);
+										close();
+									}}
+								>
+									<span className="popover-item-title">{session.title}</span>
+									<span className="popover-item-meta">{relativeTime(session.modifiedAt)}</span>
+								</button>
+								<button
+									type="button"
+									className="popover-item-edit"
+									title="重命名"
+									onClick={() => startRename(session.id, session.title)}
+								>
+									改
+								</button>
+							</div>
 						))}
 					</div>
 				</>

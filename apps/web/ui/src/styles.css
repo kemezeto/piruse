@@ -863,6 +863,7 @@ textarea {
 	justify-content: space-between;
 	gap: 0.7rem;
 	align-items: center;
+	flex-wrap: wrap;
 	border: 1px solid var(--line);
 	border-radius: 0.8rem;
 	padding: 0.7rem 0.8rem;
@@ -921,4 +922,57 @@ textarea {
 
 .archive-btn.danger {
 	color: var(--danger);
+}
+
+.archive-rename {
+	display: flex;
+	gap: 0.35rem;
+	align-items: center;
+}
+
+.archive-rename input {
+	width: 9rem;
+	border: 1px solid var(--line);
+	background: var(--surface);
+	border-radius: 0.55rem;
+	padding: 0.35rem 0.45rem;
+	color: var(--ink);
+}
+
+.popover-item-row {
+	display: flex;
+	align-items: stretch;
+	gap: 0.15rem;
+}
+
+.popover-item-row .popover-item {
+	flex: 1;
+	min-width: 0;
+}
+
+.popover-item-row.active,
+.popover-item-row:hover {
+	border-radius: 0.6rem;
+	background: var(--chip);
+}
+
+.popover-item-row.active .popover-item,
+.popover-item-row:hover .popover-item,
+.popover-item-row .popover-item:hover,
+.popover-item-row .popover-item.active {
+	background: transparent;
+}
+
+.popover-item-edit {
+	border: 0;
+	background: transparent;
+	color: var(--muted);
+	border-radius: 0.5rem;
+	padding: 0 0.45rem;
+	cursor: pointer;
+	font-size: 0.72rem;
+}
+
+.popover-item-edit:hover {
+	color: var(--ink);
 }

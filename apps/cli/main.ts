@@ -56,6 +56,7 @@ watch.start((event) => {
 try {
 	await boot.resumeOpen();
 	if (args.prompt) {
+		await boot.rememberTitleFromPrompt(args.prompt);
 		const result = await boot.lane.prompt(args.prompt, undefined, boot.context);
 		if (!result.ok) fail(result.error);
 	} else if (boot.open.length === 0) {

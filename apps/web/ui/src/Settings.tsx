@@ -133,6 +133,10 @@ function ArchivePane({
 								<span className="archive-row-meta">{relativeTime(session.modifiedAt)}</span>
 							</div>
 							<div className="archive-row-actions">
+								<RenameControl
+									title={session.title}
+									onSave={(title) => onCommand({ type: "setSessionTitle", sessionId: session.id, title })}
+								/>
 								<button
 									type="button"
 									className="archive-btn"
@@ -162,6 +166,10 @@ function ArchivePane({
 							</span>
 						</div>
 						<div className="archive-row-actions">
+							<RenameControl
+								title={session.title}
+								onSave={(title) => onCommand({ type: "setSessionTitle", sessionId: session.id, title })}
+							/>
 							<button
 								type="button"
 								className="archive-btn"
@@ -184,6 +192,41 @@ function ArchivePane({
 				))}
 			</section>
 		</div>
+	);
+}
+
+function RenameControl({ title, onSave }: { title: string; onSave: (title: string) => void }) {
+	const [editing, setEditing] = useState(false);
+	const [draft, setDraft] = useState(title);
+	useEffect(() => {
+		if (!editing) setDraft(title);
+	}, [editing, title]);
+	if (!editing) {
+		return (
+			<button type="button" className="archive-btn" onClick={() => setEditing(true)}>
+				重命名
+			</button>
+		);
+	}
+	return (
+		<form
+			className="archive-rename"
+			onSubmit={(event) => {
+				event.preventDefault();
+				const next = draft.trim();
+				if (!next) return;
+				onSave(next);
+				setEditing(false);
+			}}
+		>
+			<input value={draft} autoFocus maxLength={80} onChange={(event) => setDraft(event.target.value)} />
+			<button type="submit" className="archive-btn">
+				保存
+			</button>
+			<button type="button" className="archive-btn" onClick={() => setEditing(false)}>
+				取消
+			</button>
+		</form>
 	);
 }
 

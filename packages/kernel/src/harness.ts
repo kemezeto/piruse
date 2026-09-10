@@ -20,6 +20,7 @@ import type {
 	ViewSessionOption,
 } from "../../protocol/src/view.ts";
 import { compactionSettings } from "./compaction/settings.ts";
+import { userText } from "./messages.ts";
 import { FileCredentialStore } from "./models/auth-store.ts";
 import { applyCustomCatalog } from "./models/apply-custom.ts";
 import { listAvailableModels, listProviderCatalog, resolveConfiguredModel } from "./models/index.ts";
@@ -28,6 +29,13 @@ import type { AgentPaths } from "./models/paths.ts";
 import { isArchived, readArchiveIndex, writeArchiveIndex } from "./session/archive.ts";
 import { openInitialSession, shortId } from "./session/open.ts";
 import { readPermissionMode } from "./session/permissions.ts";
+import {
+	discoverTitleFromJsonl,
+	displayTitle,
+	readTitleIndex,
+	titleFromPrompt,
+	writeTitleIndex,
+} from "./session/titles.ts";
 import {
 	projectName,
 	projectsFromSessions,
@@ -68,6 +76,8 @@ export interface BootedHarness {
 	listArchivedSessions(): Promise<ViewArchivedSession[]>;
 	listProjects(): Promise<ViewProjectOption[]>;
 	sessionTitle(): Promise<string>;
+	setSessionTitle(sessionId: string | undefined, title: string): Promise<void>;
+	rememberTitleFromPrompt(text: string): Promise<void>;
 	setModel(provider: string, modelId: string): Promise<void>;
 	openSession(sessionId: string): Promise<void>;
 	newSession(): Promise<void>;
@@ -190,6 +200,7 @@ export class Operator implements BootedHarness {
 			profile,
 			bound,
 		);
+		await operator.ensureTitle();
 		return operator;
 	}
 
@@ -249,10 +260,12 @@ export class Operator implements BootedHarness {
 	async listSessions(): Promise<ViewSessionOption[]> {
 		const listed = await this.liveSessions({ cwd: this.cwd });
 		listed.sort((left, right) => right.modifiedAt - left.modifiedAt);
+		const page = listed.slice(0, 80);
+		const titles = await this.titlesFor(page);
 		const currentName = await this.sessionTitle();
-		return listed.slice(0, 80).map((entry) => ({
+		return page.map((entry) => ({
 			id: entry.id,
-			title: entry.id === this.session.metadata.id ? currentName : shortId(entry.id),
+			title: entry.id === this.session.metadata.id ? currentName : (titles.get(entry.id) ?? shortId(entry.id)),
 			modifiedAt: entry.modifiedAt,
 		}));
 	}
@@ -261,12 +274,15 @@ export class Operator implements BootedHarness {
 		const index = await readArchiveIndex(this.sessionsRoot);
 		const listed = await this.repo.list(undefined, this.context);
 		const byId = new Map(listed.map((entry) => [entry.id, entry]));
+		const titles = await this.titlesFor(
+			Object.keys(index).map((id) => ({ id, path: byId.get(id)?.path })),
+		);
 		return Object.entries(index)
 			.map(([id, record]) => {
 				const metadata = byId.get(id);
 				return {
 					id,
-					title: record.title.trim() || shortId(id),
+					title: displayTitle(id, titles.get(id), record.title),
 					cwd: record.cwd,
 					projectName: projectName(record.cwd),
 					modifiedAt: metadata?.modifiedAt ?? record.archivedAt,
@@ -281,8 +297,36 @@ export class Operator implements BootedHarness {
 	}
 
 	async sessionTitle(): Promise<string> {
-		const name = (await this.harness.getName(this.context).catch(() => undefined))?.trim();
-		return name || shortId(this.session.metadata.id);
+		const id = this.session.metadata.id;
+		const named = (await this.harness.getName(this.context).catch(() => undefined))?.trim();
+		const cached = (await readTitleIndex(this.sessionsRoot))[id];
+		return displayTitle(id, named, cached);
+	}
+
+	async setSessionTitle(sessionId: string | undefined, title: string): Promise<void> {
+		const id = sessionId?.trim() || this.session.metadata.id;
+		const name = titleFromPrompt(title);
+		if (!name) throw new Error("Title is required");
+		const titles = await readTitleIndex(this.sessionsRoot);
+		titles[id] = name;
+		await writeTitleIndex(this.sessionsRoot, titles);
+		if (id === this.session.metadata.id) {
+			await this.harness.setName(name, this.context);
+		}
+		const archived = await readArchiveIndex(this.sessionsRoot);
+		if (isArchived(archived, id)) {
+			archived[id] = { ...archived[id], title: name };
+			await writeArchiveIndex(this.sessionsRoot, archived);
+		}
+	}
+
+	async rememberTitleFromPrompt(text: string): Promise<void> {
+		const id = this.session.metadata.id;
+		if ((await this.harness.getName(this.context).catch(() => undefined))?.trim()) return;
+		if ((await readTitleIndex(this.sessionsRoot))[id]?.trim()) return;
+		const name = titleFromPrompt(text);
+		if (!name) return;
+		await this.setSessionTitle(id, name);
 	}
 
 	async isRunning(): Promise<boolean> {
@@ -332,7 +376,11 @@ export class Operator implements BootedHarness {
 		if (isArchived(index, id)) throw new Error(`Session is already archived: ${id}`);
 		if (id === this.session.metadata.id) {
 			if (await this.isRunning()) throw new Error("Stop the current run before archiving.");
-			const title = await this.sessionTitle();
+			const title = displayTitle(
+				id,
+				await this.sessionTitle(),
+				(await readTitleIndex(this.sessionsRoot))[id],
+			);
 			const cwd = this.cwd;
 			await this.replaceSession(async () => {
 				const listed = await this.liveSessions({ cwd });
@@ -347,7 +395,12 @@ export class Operator implements BootedHarness {
 		}
 		const metadata = (await this.repo.list(undefined, this.context)).find((entry) => entry.id === id);
 		if (!metadata) throw new Error(`Unknown session: ${id}`);
-		index[id] = { archivedAt: Date.now(), title: shortId(id), cwd: metadata.cwd };
+		const titles = await this.titlesFor([metadata]);
+		index[id] = {
+			archivedAt: Date.now(),
+			title: titles.get(id) ?? shortId(id),
+			cwd: metadata.cwd,
+		};
 		await writeArchiveIndex(this.sessionsRoot, index);
 	}
 
@@ -370,6 +423,11 @@ export class Operator implements BootedHarness {
 		if (metadata) await this.repo.delete(metadata, this.context);
 		delete index[id];
 		await writeArchiveIndex(this.sessionsRoot, index);
+		const titles = await readTitleIndex(this.sessionsRoot);
+		if (titles[id]) {
+			delete titles[id];
+			await writeTitleIndex(this.sessionsRoot, titles);
+		}
 	}
 
 	permissionMode(): PermissionMode {
@@ -395,6 +453,60 @@ export class Operator implements BootedHarness {
 
 	rejectApprovals(): void {
 		this.permissions.rejectAll("Cancelled");
+	}
+
+	private async titlesFor(entries: Array<{ id: string; path?: string }>): Promise<Map<string, string>> {
+		const stored = await readTitleIndex(this.sessionsRoot);
+		const result = new Map<string, string>();
+		let dirty = false;
+		await Promise.all(
+			entries.map(async (entry) => {
+				const cached = stored[entry.id]?.trim();
+				if (cached) {
+					result.set(entry.id, cached);
+					return;
+				}
+				const discovered = entry.path ? await discoverTitleFromJsonl(entry.path) : undefined;
+				if (discovered) {
+					stored[entry.id] = discovered;
+					dirty = true;
+					result.set(entry.id, discovered);
+					return;
+				}
+				result.set(entry.id, shortId(entry.id));
+			}),
+		);
+		if (dirty) await writeTitleIndex(this.sessionsRoot, stored);
+		return result;
+	}
+
+	private async firstUserPrompt(): Promise<string | undefined> {
+		const entries = await this.session.findEntries({ type: "message", order: "asc", limit: 40 }, this.context);
+		for (const entry of entries) {
+			if (entry.type !== "message" || entry.message.role !== "user") continue;
+			const named = titleFromPrompt(userText(entry.message.content));
+			if (named) return named;
+		}
+		return undefined;
+	}
+
+	private async ensureTitle(): Promise<void> {
+		const id = this.session.metadata.id;
+		const named = (await this.harness.getName(this.context).catch(() => undefined))?.trim();
+		const stored = await readTitleIndex(this.sessionsRoot);
+		if (named) {
+			if (stored[id] !== named) {
+				stored[id] = named;
+				await writeTitleIndex(this.sessionsRoot, stored);
+			}
+			return;
+		}
+		if (stored[id]?.trim()) {
+			await this.harness.setName(stored[id], this.context);
+			return;
+		}
+		const first = await this.firstUserPrompt();
+		if (first) await this.setSessionTitle(id, first);
 	}
 
 	private async liveSessions(filter?: { cwd?: string }): Promise<JsonlSessionMetadata[]> {
@@ -437,6 +549,7 @@ export class Operator implements BootedHarness {
 			this.model = bound.model;
 			await this.permissions.loadForCwd(this.cwd, this.context, this.lane);
 			await this.resumeOpen();
+			await this.ensureTitle();
 			await this.rememberProject();
 		} catch (error) {
 			this.applyCwd(previous.cwd);

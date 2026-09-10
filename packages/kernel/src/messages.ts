@@ -43,7 +43,7 @@ export function formatArgs(args: unknown): string {
 	}
 }
 
-function userText(content: string | Array<{ type: string; text?: string }>): string {
+export function userText(content: string | Array<{ type: string; text?: string }>): string {
 	if (typeof content === "string") return content;
 	return content
 		.filter((block) => block.type === "text")

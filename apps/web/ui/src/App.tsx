@@ -92,6 +92,7 @@ export function App() {
 								onOpen={(sessionId) => command({ type: "openSession", sessionId })}
 								onNew={() => command({ type: "newSession" })}
 								onArchive={() => command({ type: "archiveSession", sessionId: state.sessionId })}
+								onRename={(sessionId, title) => command({ type: "setSessionTitle", sessionId, title })}
 							/>
 							<ModelPicker
 								current={state.model}

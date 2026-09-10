@@ -193,8 +193,15 @@ wss.on("connection", (socket) => {
 				}
 				await run(async () => {
 					if (message.type === "prompt" && message.text?.trim()) {
+						await operator.rememberTitleFromPrompt(message.text.trim());
+						meta = await loadMeta(operator);
+						broadcast();
 						const result = await operator.lane.prompt(message.text.trim(), undefined, operator.context);
 						if (!result.ok) notice(socket, result.error);
+					} else if (message.type === "setSessionTitle" && message.title?.trim()) {
+						await operator.setSessionTitle(message.sessionId, message.title);
+						meta = await loadMeta(operator);
+						broadcast();
 					} else if (message.type === "setModel" && message.provider && message.modelId) {
 						await operator.setModel(message.provider, message.modelId);
 						meta = await loadMeta(operator);
