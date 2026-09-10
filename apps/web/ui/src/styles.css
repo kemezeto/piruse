@@ -659,6 +659,12 @@ textarea {
 	color: var(--muted);
 }
 
+.popover-group {
+	display: flex;
+	flex-direction: column;
+	gap: 0.28rem;
+}
+
 .popover-item {
 	width: 100%;
 	border: 0;
