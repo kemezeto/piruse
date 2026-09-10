@@ -158,6 +158,7 @@ export function SessionPicker({
 	running,
 	onOpen,
 	onNew,
+	onArchive,
 }: {
 	currentId: string;
 	title: string;
@@ -165,6 +166,7 @@ export function SessionPicker({
 	running: boolean;
 	onOpen: (sessionId: string) => void;
 	onNew: () => void;
+	onArchive: () => void;
 }) {
 	return (
 		<Menu align="right" label="Chat" value={title} disabled={running}>
@@ -179,6 +181,16 @@ export function SessionPicker({
 						}}
 					>
 						New chat
+					</button>
+					<button
+						type="button"
+						className="popover-new"
+						onClick={() => {
+							onArchive();
+							close();
+						}}
+					>
+						归档当前对话
 					</button>
 					<div className="popover-list" role="listbox" aria-label="Chats">
 						{sessions.length === 0 ? <p className="popover-empty">No chats in this project</p> : null}

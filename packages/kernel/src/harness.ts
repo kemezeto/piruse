@@ -12,6 +12,7 @@ import {
 import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
 import type { MutableModels, Provider } from "@earendil-works/pi-ai";
 import type {
+	ViewArchivedSession,
 	ViewModelOption,
 	ViewProjectOption,
 	ViewProviderChoice,
@@ -24,9 +25,11 @@ import { applyCustomCatalog } from "./models/apply-custom.ts";
 import { listAvailableModels, listProviderCatalog, resolveConfiguredModel } from "./models/index.ts";
 import { loadModelsJson, saveModelsJson, type ModelsJsonModel } from "./models/models-json.ts";
 import type { AgentPaths } from "./models/paths.ts";
+import { isArchived, readArchiveIndex, writeArchiveIndex } from "./session/archive.ts";
 import { openInitialSession, shortId } from "./session/open.ts";
 import { readPermissionMode } from "./session/permissions.ts";
 import {
+	projectName,
 	projectsFromSessions,
 	resolveProjectDirectory,
 	writeLastProject,
@@ -62,12 +65,16 @@ export interface BootedHarness {
 	listModels(): Promise<ViewModelOption[]>;
 	listCatalog(): Promise<{ providers: ViewProviderOption[]; choices: ViewProviderChoice[] }>;
 	listSessions(): Promise<ViewSessionOption[]>;
+	listArchivedSessions(): Promise<ViewArchivedSession[]>;
 	listProjects(): Promise<ViewProjectOption[]>;
 	sessionTitle(): Promise<string>;
 	setModel(provider: string, modelId: string): Promise<void>;
 	openSession(sessionId: string): Promise<void>;
 	newSession(): Promise<void>;
 	openProject(cwd: string): Promise<void>;
+	archiveSession(sessionId?: string): Promise<void>;
+	unarchiveSession(sessionId: string): Promise<void>;
+	deleteArchivedSession(sessionId: string): Promise<void>;
 	setPermissionMode(mode: PermissionMode): Promise<void>;
 	resolveApproval(id: string, allow: boolean): void;
 	rejectApprovals(): void;
@@ -136,7 +143,12 @@ export class Operator implements BootedHarness {
 		const bootCwd = await resolveProjectDirectory(executionEnv, options.cwd, context);
 		executionEnv.cwd = bootCwd;
 		const repo = new JsonlSessionRepo({ fileSystem: executionEnv, sessionsRoot: options.sessionsRoot });
-		const session = await openInitialSession(repo, { ...options, cwd: bootCwd }, context);
+		const archived = await readArchiveIndex(options.sessionsRoot);
+		const session = await openInitialSession(
+			repo,
+			{ ...options, cwd: bootCwd, usable: (id) => !isArchived(archived, id) },
+			context,
+		);
 		const cwd = session.metadata.cwd;
 		executionEnv.cwd = cwd;
 		const profile = resolveProfile(options.profileId);
@@ -235,7 +247,7 @@ export class Operator implements BootedHarness {
 	}
 
 	async listSessions(): Promise<ViewSessionOption[]> {
-		const listed = await this.repo.list({ cwd: this.cwd }, this.context);
+		const listed = await this.liveSessions({ cwd: this.cwd });
 		listed.sort((left, right) => right.modifiedAt - left.modifiedAt);
 		const currentName = await this.sessionTitle();
 		return listed.slice(0, 80).map((entry) => ({
@@ -245,8 +257,27 @@ export class Operator implements BootedHarness {
 		}));
 	}
 
+	async listArchivedSessions(): Promise<ViewArchivedSession[]> {
+		const index = await readArchiveIndex(this.sessionsRoot);
+		const listed = await this.repo.list(undefined, this.context);
+		const byId = new Map(listed.map((entry) => [entry.id, entry]));
+		return Object.entries(index)
+			.map(([id, record]) => {
+				const metadata = byId.get(id);
+				return {
+					id,
+					title: record.title.trim() || shortId(id),
+					cwd: record.cwd,
+					projectName: projectName(record.cwd),
+					modifiedAt: metadata?.modifiedAt ?? record.archivedAt,
+					archivedAt: record.archivedAt,
+				};
+			})
+			.sort((left, right) => right.archivedAt - left.archivedAt);
+	}
+
 	async listProjects(): Promise<ViewProjectOption[]> {
-		return projectsFromSessions(await this.repo.list(undefined, this.context), this.cwd);
+		return projectsFromSessions(await this.liveSessions(), this.cwd);
 	}
 
 	async sessionTitle(): Promise<string> {
@@ -270,6 +301,9 @@ export class Operator implements BootedHarness {
 
 	async openSession(sessionId: string): Promise<void> {
 		if (sessionId === this.session.metadata.id) return;
+		if (isArchived(await readArchiveIndex(this.sessionsRoot), sessionId)) {
+			throw new Error(`Session is archived: ${sessionId}`);
+		}
 		const metadata =
 			(await this.repo.list({ cwd: this.cwd }, this.context)).find((entry) => entry.id === sessionId) ??
 			(await this.repo.list(undefined, this.context)).find((entry) => entry.id === sessionId);
@@ -285,11 +319,57 @@ export class Operator implements BootedHarness {
 		const cwd = await resolveProjectDirectory(this.executionEnv, cwdInput, this.context);
 		if (cwd === this.cwd) return;
 		await this.replaceSession(async () => {
-			const listed = await this.repo.list({ cwd }, this.context);
+			const listed = await this.liveSessions({ cwd });
 			listed.sort((left, right) => right.modifiedAt - left.modifiedAt);
 			const latest = listed[0];
 			return latest ? this.repo.open(latest, this.context) : this.repo.create({ cwd }, this.context);
 		});
+	}
+
+	async archiveSession(sessionId?: string): Promise<void> {
+		const id = sessionId?.trim() || this.session.metadata.id;
+		const index = await readArchiveIndex(this.sessionsRoot);
+		if (isArchived(index, id)) throw new Error(`Session is already archived: ${id}`);
+		if (id === this.session.metadata.id) {
+			if (await this.isRunning()) throw new Error("Stop the current run before archiving.");
+			const title = await this.sessionTitle();
+			const cwd = this.cwd;
+			await this.replaceSession(async () => {
+				const listed = await this.liveSessions({ cwd });
+				listed.sort((left, right) => right.modifiedAt - left.modifiedAt);
+				const next = listed.find((entry) => entry.id !== id);
+				return next ? this.repo.open(next, this.context) : this.repo.create({ cwd }, this.context);
+			});
+			const nextIndex = await readArchiveIndex(this.sessionsRoot);
+			nextIndex[id] = { archivedAt: Date.now(), title, cwd };
+			await writeArchiveIndex(this.sessionsRoot, nextIndex);
+			return;
+		}
+		const metadata = (await this.repo.list(undefined, this.context)).find((entry) => entry.id === id);
+		if (!metadata) throw new Error(`Unknown session: ${id}`);
+		index[id] = { archivedAt: Date.now(), title: shortId(id), cwd: metadata.cwd };
+		await writeArchiveIndex(this.sessionsRoot, index);
+	}
+
+	async unarchiveSession(sessionId: string): Promise<void> {
+		const id = sessionId.trim();
+		const index = await readArchiveIndex(this.sessionsRoot);
+		if (!isArchived(index, id)) throw new Error(`Session is not archived: ${id}`);
+		const metadata = (await this.repo.list(undefined, this.context)).find((entry) => entry.id === id);
+		if (!metadata) throw new Error("Archived session file is missing. Delete it instead.");
+		delete index[id];
+		await writeArchiveIndex(this.sessionsRoot, index);
+	}
+
+	async deleteArchivedSession(sessionId: string): Promise<void> {
+		const id = sessionId.trim();
+		if (id === this.session.metadata.id) throw new Error("Cannot delete the open session.");
+		const index = await readArchiveIndex(this.sessionsRoot);
+		if (!isArchived(index, id)) throw new Error(`Session is not archived: ${id}`);
+		const metadata = (await this.repo.list(undefined, this.context)).find((entry) => entry.id === id);
+		if (metadata) await this.repo.delete(metadata, this.context);
+		delete index[id];
+		await writeArchiveIndex(this.sessionsRoot, index);
 	}
 
 	permissionMode(): PermissionMode {
@@ -315,6 +395,12 @@ export class Operator implements BootedHarness {
 
 	rejectApprovals(): void {
 		this.permissions.rejectAll("Cancelled");
+	}
+
+	private async liveSessions(filter?: { cwd?: string }): Promise<JsonlSessionMetadata[]> {
+		const index = await readArchiveIndex(this.sessionsRoot);
+		const listed = await this.repo.list(filter?.cwd === undefined ? undefined : { cwd: filter.cwd }, this.context);
+		return listed.filter((entry) => !isArchived(index, entry.id));
 	}
 
 	private applyCwd(cwd: string): void {

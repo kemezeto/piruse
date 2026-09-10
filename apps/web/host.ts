@@ -74,10 +74,11 @@ function run(task: () => Promise<void>): Promise<void> {
 }
 
 async function loadMeta(current: Operator): Promise<ViewMeta> {
-	const [models, catalog, sessions, projects, sessionTitle] = await Promise.all([
+	const [models, catalog, sessions, archivedSessions, projects, sessionTitle] = await Promise.all([
 		current.listModels(),
 		current.listCatalog(),
 		current.listSessions(),
+		current.listArchivedSessions(),
 		current.listProjects(),
 		current.sessionTitle(),
 	]);
@@ -91,6 +92,7 @@ async function loadMeta(current: Operator): Promise<ViewMeta> {
 		providerChoices: catalog.choices,
 		projects,
 		sessions,
+		archivedSessions,
 		permissionMode: current.permissionMode(),
 		pendingApprovals: current.pendingApprovals(),
 	};
@@ -98,6 +100,14 @@ async function loadMeta(current: Operator): Promise<ViewMeta> {
 
 function send(socket: WebSocket, payload: SocketPayload): void {
 	if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(payload));
+}
+
+function broadcast(): void {
+	for (const client of clients) {
+		if (client.snapshot && client.socket.readyState === client.socket.OPEN) {
+			send(client.socket, { type: "state", state: projectView(meta, client.snapshot) });
+		}
+	}
 }
 
 function notice(socket: WebSocket, error: unknown): void {
@@ -209,6 +219,27 @@ wss.on("connection", (socket) => {
 						} finally {
 							await rebind();
 						}
+					} else if (message.type === "archiveSession") {
+						const target = message.sessionId?.trim() || operator.session.metadata.id;
+						const switching = target === operator.session.metadata.id;
+						if (switching) dropWatches();
+						try {
+							await operator.archiveSession(message.sessionId);
+						} finally {
+							if (switching) await rebind();
+							else {
+								meta = await loadMeta(operator);
+								broadcast();
+							}
+						}
+					} else if (message.type === "unarchiveSession" && message.sessionId) {
+						await operator.unarchiveSession(message.sessionId);
+						meta = await loadMeta(operator);
+						broadcast();
+					} else if (message.type === "deleteArchivedSession" && message.sessionId) {
+						await operator.deleteArchivedSession(message.sessionId);
+						meta = await loadMeta(operator);
+						broadcast();
 					} else if (message.type === "addProvider" && message.id && message.baseUrl && message.api && message.apiKey) {
 						await operator.addProvider({
 							id: message.id,

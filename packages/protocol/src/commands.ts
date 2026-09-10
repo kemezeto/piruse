@@ -8,6 +8,9 @@ export type ClientMessage =
 	| { type: "openSession"; sessionId?: string }
 	| { type: "newSession" }
 	| { type: "openProject"; cwd?: string }
+	| { type: "archiveSession"; sessionId?: string }
+	| { type: "unarchiveSession"; sessionId?: string }
+	| { type: "deleteArchivedSession"; sessionId?: string }
 	| { type: "setPermissionMode"; mode?: PermissionMode }
 	| { type: "approveTool"; id?: string }
 	| { type: "denyTool"; id?: string }

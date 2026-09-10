@@ -91,6 +91,7 @@ export function App() {
 								running={state.running}
 								onOpen={(sessionId) => command({ type: "openSession", sessionId })}
 								onNew={() => command({ type: "newSession" })}
+								onArchive={() => command({ type: "archiveSession", sessionId: state.sessionId })}
 							/>
 							<ModelPicker
 								current={state.model}
@@ -137,6 +138,10 @@ export function App() {
 				open={settingsOpen}
 				providers={state?.providers ?? []}
 				choices={state?.providerChoices ?? []}
+				sessions={state?.sessions ?? []}
+				archivedSessions={state?.archivedSessions ?? []}
+				currentSessionId={state?.sessionId ?? ""}
+				running={Boolean(state?.running)}
 				onClose={() => setSettingsOpen(false)}
 				onCommand={command}
 			/>

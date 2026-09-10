@@ -857,3 +857,68 @@ textarea {
 .settings-submit:hover {
 	background: #2a2a26;
 }
+
+.archive-row {
+	display: flex;
+	justify-content: space-between;
+	gap: 0.7rem;
+	align-items: center;
+	border: 1px solid var(--line);
+	border-radius: 0.8rem;
+	padding: 0.7rem 0.8rem;
+	margin-bottom: 0.5rem;
+	background: var(--bg);
+}
+
+.archive-row-copy {
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+	min-width: 0;
+}
+
+.archive-row-copy strong {
+	font-size: 0.88rem;
+}
+
+.archive-row-meta,
+.archive-row-path {
+	color: var(--muted);
+	font-size: 0.75rem;
+}
+
+.archive-row-path {
+	font-family: "Source Code Pro", ui-monospace, monospace;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.archive-row-actions {
+	display: flex;
+	flex-shrink: 0;
+	gap: 0.35rem;
+}
+
+.archive-btn {
+	border: 1px solid var(--line);
+	background: var(--surface);
+	color: var(--ink);
+	border-radius: 0.55rem;
+	padding: 0.35rem 0.55rem;
+	cursor: pointer;
+	font-size: 0.78rem;
+}
+
+.archive-btn:hover:not(:disabled) {
+	background: var(--chip);
+}
+
+.archive-btn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.archive-btn.danger {
+	color: var(--danger);
+}

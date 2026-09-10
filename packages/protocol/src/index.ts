@@ -8,6 +8,7 @@ export type {
 	ViewProjectOption,
 	ViewProviderOption,
 	ViewSessionOption,
+	ViewArchivedSession,
 	ViewState,
 	PermissionMode,
 	ApprovalReason,

@@ -26,6 +26,15 @@ export interface ViewSessionOption {
 	modifiedAt: number;
 }
 
+export interface ViewArchivedSession {
+	id: string;
+	title: string;
+	cwd: string;
+	projectName: string;
+	modifiedAt: number;
+	archivedAt: number;
+}
+
 export interface ViewProjectOption {
 	cwd: string;
 	name: string;
@@ -55,6 +64,7 @@ export interface ViewState {
 	providerChoices: ViewProviderChoice[];
 	projects: ViewProjectOption[];
 	sessions: ViewSessionOption[];
+	archivedSessions: ViewArchivedSession[];
 	permissionMode: PermissionMode;
 	pendingApprovals: ViewApproval[];
 	running: boolean;
@@ -77,6 +87,7 @@ export interface ViewMeta {
 	providerChoices: ViewProviderChoice[];
 	projects: ViewProjectOption[];
 	sessions: ViewSessionOption[];
+	archivedSessions: ViewArchivedSession[];
 	permissionMode: PermissionMode;
 	pendingApprovals: ViewApproval[];
 }

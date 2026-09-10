@@ -10,6 +10,7 @@ export interface OpenSessionOptions {
 	cwd: string;
 	sessionId?: string;
 	continueSession?: boolean;
+	usable?: (sessionId: string) => boolean;
 }
 
 export function shortId(id: string): string {
@@ -21,7 +22,9 @@ export async function openInitialSession(
 	options: OpenSessionOptions,
 	context: Context = BACKGROUND_CONTEXT,
 ): Promise<Session<JsonlSessionMetadata>> {
+	const usable = options.usable ?? (() => true);
 	if (options.sessionId) {
+		if (!usable(options.sessionId)) throw new Error(`Session is archived: ${options.sessionId}`);
 		const metadata = (await repo.list(undefined, context)).find((candidate) => candidate.id === options.sessionId);
 		if (!metadata) throw new Error(`Unknown session: ${options.sessionId}`);
 		return repo.open(metadata, context);
@@ -29,7 +32,7 @@ export async function openInitialSession(
 	if (options.continueSession) {
 		const listed = await repo.list({ cwd: options.cwd }, context);
 		listed.sort((left, right) => right.modifiedAt - left.modifiedAt);
-		const latest = listed[0];
+		const latest = listed.find((entry) => usable(entry.id));
 		if (!latest) throw new Error(`No sessions for ${options.cwd}. Run once without --continue.`);
 		return repo.open(latest, context);
 	}
