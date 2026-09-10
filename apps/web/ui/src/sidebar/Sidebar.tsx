@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { FolderAddIcon, FolderIcon, GitBranchIcon, MenuFoldIcon, MenuUnfoldIcon, SettingIcon } from "tdesign-icons-react";
+import { ChevronRightIcon, FolderAddIcon, FolderIcon, GitBranchIcon, MenuFoldIcon, MenuUnfoldIcon, SettingIcon } from "tdesign-icons-react";
 import type { ViewProjectOption, ViewSessionOption } from "@protocol/view";
 import { ConfirmDialog } from "../dialog/Confirm";
 import { ChatRow } from "./ChatRow";
@@ -136,12 +136,14 @@ export function Sidebar({
 								<div key={project.cwd} className="sidebar-project">
 									<button
 										type="button"
-										className={`sidebar-folder${project.cwd === cwd ? " current" : ""}`}
+										className={`sidebar-folder${project.cwd === cwd ? " current" : ""}${open ? " open" : ""}`}
 										title={project.cwd}
+										aria-expanded={open}
 										onClick={() => toggleProject(project.cwd, project.sessionCount)}
 									>
 										<FolderIcon size={14} />
 										<span>{project.name}</span>
+										<ChevronRightIcon size={14} className={`caret${open ? " open" : ""}`} />
 									</button>
 									{open
 										? project.sessions.map((session) => (

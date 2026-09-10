@@ -1,5 +1,5 @@
 import { type ReactNode, useState } from "react";
-import { ChevronDownIcon } from "tdesign-icons-react";
+import { ChevronRightIcon } from "tdesign-icons-react";
 import { Popup } from "tdesign-react";
 
 export function Menu({
@@ -48,12 +48,13 @@ export function Menu({
 				className={`menu-btn${variant === "inline" ? " inline" : ""}${open ? " open" : ""}`}
 				disabled={disabled}
 				aria-label={label}
+				aria-expanded={open}
 				title={disabled ? "请先停止当前运行" : hint ?? value}
 			>
 				{icon}
 				{variant === "stacked" ? <span className="menu-label">{label}</span> : null}
 				<span className="menu-value">{value}</span>
-				{variant === "inline" ? <ChevronDownIcon size={12} aria-hidden="true" /> : null}
+				<ChevronRightIcon size={12} className={`caret${open ? " open" : ""}`} aria-hidden="true" />
 			</button>
 		</Popup>
 	);
