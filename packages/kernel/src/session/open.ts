@@ -31,22 +31,41 @@ export async function openInitialSession(
 		if (!metadata) throw new Error(`Unknown session: ${options.sessionId}`);
 		return repo.open(metadata, context);
 	}
-	const latest = await latestUsable(repo, options.cwd, usable, context);
+	const candidates = await listUsable(repo, options.cwd, usable, context);
 	if (options.continueSession) {
-		if (!latest) throw new Error(`No sessions for ${options.cwd}. Run once without --continue.`);
-		return repo.open(latest, context);
+		if (!candidates[0]) throw new Error(`No sessions for ${options.cwd}. Run once without --continue.`);
+		return repo.open(candidates[0], context);
 	}
-	if (options.resumeLatest && latest) return repo.open(latest, context);
+	if (options.resumeLatest) {
+		const session = await openFirstReadable(repo, candidates, context);
+		if (session) return session;
+	}
 	return repo.create({ cwd: options.cwd }, context);
 }
 
-async function latestUsable(
+export async function openFirstReadable(
+	repo: JsonlSessionRepo,
+	candidates: JsonlSessionMetadata[],
+	context: Context,
+): Promise<Session<JsonlSessionMetadata> | undefined> {
+	for (const metadata of candidates) {
+		try {
+			return await repo.open(metadata, context);
+		} catch (error) {
+			const reason = error instanceof Error ? error.message : String(error);
+			console.warn(`Skipping unreadable session ${shortId(metadata.id)}: ${reason}`);
+		}
+	}
+	return undefined;
+}
+
+async function listUsable(
 	repo: JsonlSessionRepo,
 	cwd: string,
 	usable: (sessionId: string) => boolean,
 	context: Context,
-): Promise<JsonlSessionMetadata | undefined> {
+): Promise<JsonlSessionMetadata[]> {
 	const listed = await repo.list({ cwd }, context);
 	listed.sort((left, right) => right.modifiedAt - left.modifiedAt);
-	return listed.find((entry) => usable(entry.id));
+	return listed.filter((entry) => usable(entry.id));
 }

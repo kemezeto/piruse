@@ -27,7 +27,7 @@ import { listAvailableModels, listProviderCatalog, resolveConfiguredModel } from
 import { loadModelsJson, saveModelsJson, type ModelsJsonModel } from "./models/models-json.ts";
 import type { AgentPaths } from "./models/paths.ts";
 import { isArchived, readArchiveIndex, writeArchiveIndex } from "./session/archive.ts";
-import { openInitialSession, shortId } from "./session/open.ts";
+import { openFirstReadable, openInitialSession, shortId } from "./session/open.ts";
 import { readPermissionMode } from "./session/permissions.ts";
 import {
 	discoverTitleFromJsonl,
@@ -384,8 +384,7 @@ export class Operator implements BootedHarness {
 		await this.replaceSession(async () => {
 			const listed = await this.liveSessions({ cwd });
 			listed.sort((left, right) => right.modifiedAt - left.modifiedAt);
-			const latest = listed[0];
-			return latest ? this.repo.open(latest, this.context) : this.repo.create({ cwd }, this.context);
+			return (await openFirstReadable(this.repo, listed, this.context)) ?? this.repo.create({ cwd }, this.context);
 		});
 	}
 
@@ -404,8 +403,8 @@ export class Operator implements BootedHarness {
 			await this.replaceSession(async () => {
 				const listed = await this.liveSessions({ cwd });
 				listed.sort((left, right) => right.modifiedAt - left.modifiedAt);
-				const next = listed.find((entry) => entry.id !== id);
-				return next ? this.repo.open(next, this.context) : this.repo.create({ cwd }, this.context);
+				const next = listed.filter((entry) => entry.id !== id);
+				return (await openFirstReadable(this.repo, next, this.context)) ?? this.repo.create({ cwd }, this.context);
 			});
 			const nextIndex = await readArchiveIndex(this.sessionsRoot);
 			nextIndex[id] = { archivedAt: Date.now(), title, cwd };

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronRightIcon, FolderAddIcon, FolderIcon, GitBranchIcon, MenuFoldIcon, MenuUnfoldIcon, SettingIcon } from "tdesign-icons-react";
+import { ChatBubbleHelpIcon, ChevronRightIcon, FolderAddIcon, FolderIcon, MenuFoldIcon, MenuUnfoldIcon, SettingIcon } from "tdesign-icons-react";
 import type { ViewProjectOption, ViewSessionOption } from "@protocol/view";
 import { ConfirmDialog } from "../dialog/Confirm";
 import { ChatRow } from "./ChatRow";
@@ -85,7 +85,7 @@ export function Sidebar({
 					title={running ? "请先停止当前运行" : "新建对话"}
 					onClick={onNewChat}
 				>
-					<GitBranchIcon size={16} />
+					<ChatBubbleHelpIcon size={16} />
 					{collapsed ? null : <span>New Chat</span>}
 				</button>
 			</div>
