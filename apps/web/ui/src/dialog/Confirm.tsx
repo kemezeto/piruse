@@ -7,7 +7,8 @@ export function ConfirmDialog({
 	confirmLabel,
 	cancelLabel = "取消",
 	busy = false,
-	onCancel,
+	danger = false,
+	onCancel: handleCancel,
 	onConfirm,
 }: {
 	open: boolean;
@@ -16,14 +17,18 @@ export function ConfirmDialog({
 	confirmLabel: string;
 	cancelLabel?: string;
 	busy?: boolean;
+	danger?: boolean;
 	onCancel: () => void;
 	onConfirm: () => void;
 }) {
+	const close = (): void => {
+		if (!busy) handleCancel();
+	};
 	return (
 		<Dialog
 			visible={open}
 			header={title}
-			confirmBtn={confirmLabel}
+			confirmBtn={danger ? { content: confirmLabel, theme: "danger" } : confirmLabel}
 			cancelBtn={cancelLabel}
 			confirmLoading={busy}
 			closeBtn={!busy}
@@ -31,9 +36,8 @@ export function ConfirmDialog({
 			closeOnEscKeydown={!busy}
 			placement="center"
 			destroyOnClose
-			onClose={() => {
-				if (!busy) onCancel();
-			}}
+			onClose={close}
+			onCancel={close}
 			onConfirm={() => onConfirm()}
 		>
 			{body}

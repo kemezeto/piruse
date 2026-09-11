@@ -18,6 +18,7 @@ export function ArchivePane({
 	onCommand: HostCommand;
 }) {
 	const [pending, setPending] = useState<ViewSessionOption | null>(null);
+	const [pendingDelete, setPendingDelete] = useState<ViewArchivedSession | null>(null);
 	return (
 		<div className="settings-page">
 			<div className="settings-page-head">
@@ -90,10 +91,7 @@ export function ArchivePane({
 								<button
 									type="button"
 									className="archive-btn danger"
-									onClick={() => {
-										if (!window.confirm(`彻底删除「${session.title}」？此操作不可恢复。`)) return;
-										onCommand({ type: "deleteArchivedSession", sessionId: session.id });
-									}}
+									onClick={() => setPendingDelete(session)}
 								>
 									彻底删除
 								</button>
@@ -112,6 +110,19 @@ export function ArchivePane({
 					if (!pending) return;
 					onCommand({ type: "archiveSession", sessionId: pending.id });
 					setPending(null);
+				}}
+			/>
+			<ConfirmDialog
+				open={Boolean(pendingDelete)}
+				title="彻底删除"
+				body={`确认彻底删除「${pendingDelete?.title ?? ""}」？此操作不可恢复。`}
+				confirmLabel="彻底删除"
+				danger
+				onCancel={() => setPendingDelete(null)}
+				onConfirm={() => {
+					if (!pendingDelete) return;
+					onCommand({ type: "deleteArchivedSession", sessionId: pendingDelete.id });
+					setPendingDelete(null);
 				}}
 			/>
 		</div>
