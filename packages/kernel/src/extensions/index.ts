@@ -7,6 +7,11 @@ import type { InstalledResource } from "../packages/inventory.ts";
 import { listInstalledResources } from "../packages/inventory.ts";
 import type { Skill } from "../skills/index.ts";
 import {
+	installPiruseChildSessionFactory,
+	isPiSubagentsPath,
+	resetPiruseChildSessionFactory,
+} from "./child-session.ts";
+import {
 	createExtensionHost,
 	installExtensionHooks,
 	type LoadedExtension,
@@ -15,6 +20,7 @@ import {
 	wrapExtensionTool,
 } from "./host.ts";
 import { importExtensionFactory } from "./loader.ts";
+import type { ExtensionRuntime } from "./runtime.ts";
 
 export interface PackageHostOptions {
 	cwd: string;
@@ -32,6 +38,8 @@ export class PackageHost {
 	private providerSnapshots = new Map<string, Provider | undefined>();
 	private cwd = "";
 	private models: MutableModels | undefined;
+	private runtime: ExtensionRuntime | undefined;
+	private childFactory: { dispose(): Promise<void> } | undefined;
 
 	skills(): Skill[] {
 		return this.skillsList;
@@ -67,11 +75,22 @@ export class PackageHost {
 			await this.loadOne(extension.path, options);
 		}
 		this.wrappedTools = this.loaded.flatMap((extension) =>
-			extension.tools.map((tool) => wrapExtensionTool(tool, options.cwd)),
+			extension.tools.map((tool) => wrapExtensionTool(tool, options.cwd, () => this.runtime)),
 		);
 	}
 
+	bindRuntime(runtime: ExtensionRuntime): void {
+		this.runtime = runtime;
+	}
+
 	unload(): void {
+		const factory = this.childFactory;
+		this.childFactory = undefined;
+		void factory?.dispose();
+		for (const extension of this.loaded) {
+			if (isPiSubagentsPath(extension.path)) void resetPiruseChildSessionFactory(extension.path);
+		}
+		this.runtime = undefined;
 		if (this.models) {
 			for (const [id, previous] of this.providerSnapshots) {
 				try {
@@ -92,7 +111,7 @@ export class PackageHost {
 	}
 
 	installHooks(harness: AgentHarness): void {
-		installExtensionHooks(harness, this.loaded, this.cwd);
+		installExtensionHooks(harness, this.loaded, this.cwd, () => this.runtime);
 	}
 
 	private async loadOne(path: string, options: PackageHostOptions): Promise<void> {
@@ -101,14 +120,19 @@ export class PackageHost {
 			models: options.models,
 			diagnostics: this.diagnostics,
 			providerSnapshots: this.providerSnapshots,
+			runtime: () => this.runtime,
 		});
 		host.record.path = path;
 		host.record.name = extensionName(path);
 		try {
 			const factory = await importExtensionFactory(path);
 			await runExtensionFactory(factory, host.api);
+			if (isPiSubagentsPath(path)) forceForegroundSubagent(host.record.tools);
 			host.commitProviders();
 			this.loaded.push(host.record);
+			if (isPiSubagentsPath(path)) {
+				this.childFactory = await installPiruseChildSessionFactory(path, () => this.runtime);
+			}
 		} catch (error) {
 			this.diagnostics.push({
 				level: "error",
@@ -116,6 +140,20 @@ export class PackageHost {
 				path,
 			});
 		}
+	}
+}
+
+function forceForegroundSubagent(tools: LoadedExtension["tools"]): void {
+	for (const tool of tools) {
+		if (tool.name !== "subagent") continue;
+		const execute = tool.execute.bind(tool);
+		tool.execute = (toolCallId, params, signal, onUpdate, ctx) => {
+			const next =
+				params && typeof params === "object"
+					? { ...(params as Record<string, unknown>), async: false }
+					: { async: false };
+			return execute(toolCallId, next as typeof params, signal, onUpdate, ctx);
+		};
 	}
 }
 

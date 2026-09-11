@@ -1465,12 +1465,6 @@ textarea {
 	flex: none;
 }
 
-.package-card-toggle .t-switch {
-	--td-comp-size-xs: 2rem;
-	min-width: 5.1rem;
-	font-weight: 600;
-}
-
 .package-card-copy strong {
 	font-size: 0.9rem;
 	font-weight: 600;

@@ -48,7 +48,7 @@ export function PackagesPane({
 										title={running ? "请先停止当前运行" : item.enabled ? "已启用" : "已禁用"}
 									>
 										<Switch
-											size="large"
+											size="medium"
 											value={item.enabled}
 											disabled={running}
 											label={["启用", "禁用"]}

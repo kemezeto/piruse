@@ -6,38 +6,8 @@ import { createJiti } from "jiti/static";
 import * as typebox from "typebox";
 import * as typeboxCompile from "typebox/compile";
 import * as typeboxValue from "typebox/value";
-import { defineTool } from "./types.ts";
+import { codingAgentShim, tuiShim } from "./shims.ts";
 import type { ExtensionFactory } from "./types.ts";
-
-const codingAgentShim = {
-	defineTool,
-};
-
-class TuiNode {
-	addChild(_child: unknown): void {}
-}
-
-class Box extends TuiNode {
-	constructor(..._args: unknown[]) {
-		super();
-	}
-}
-
-class Text extends TuiNode {
-	constructor(..._args: unknown[]) {
-		super();
-	}
-}
-
-function truncateToWidth(text: string, _width?: number): string {
-	return text;
-}
-
-const tuiStub = {
-	Box,
-	Text,
-	truncateToWidth,
-};
 
 const VIRTUAL_MODULES: Record<string, unknown> = {
 	typebox,
@@ -52,30 +22,38 @@ const VIRTUAL_MODULES: Record<string, unknown> = {
 	"@earendil-works/pi-ai/oauth": piAiOauth,
 	"@earendil-works/pi-ai/providers/all": piAiProviders,
 	"@earendil-works/pi-coding-agent": codingAgentShim,
-	"@earendil-works/pi-tui": tuiStub,
+	"@earendil-works/pi-tui": tuiShim,
 	"@mariozechner/pi-agent-core": piAgentCore,
 	"@mariozechner/pi-ai": piAiCompat,
 	"@mariozechner/pi-ai/compat": piAiCompat,
 	"@mariozechner/pi-ai/oauth": piAiOauth,
 	"@mariozechner/pi-ai/providers/all": piAiProviders,
 	"@mariozechner/pi-coding-agent": codingAgentShim,
-	"@mariozechner/pi-tui": tuiStub,
+	"@mariozechner/pi-tui": tuiShim,
 };
 
-export async function importExtensionFactory(extensionPath: string): Promise<ExtensionFactory> {
-	const jiti = createJiti(import.meta.url, {
-		moduleCache: false,
+type ExtensionJiti = ReturnType<typeof createJiti>;
+
+let sharedJiti: ExtensionJiti | undefined;
+
+export function getExtensionJiti(): ExtensionJiti {
+	sharedJiti ??= createJiti(import.meta.url, {
+		moduleCache: true,
 		tryNative: false,
 		virtualModules: VIRTUAL_MODULES,
 	});
+	return sharedJiti;
+}
+
+export async function importExtensionFactory(extensionPath: string): Promise<ExtensionFactory> {
 	const module = await withTimeout(
-		jiti.import(extensionPath, { default: true }),
+		getExtensionJiti().import(extensionPath, { default: true }),
 		20_000,
 		`Extension import timed out: ${extensionPath}`,
 	);
 	if (typeof module === "function") return module as ExtensionFactory;
-	if (module && typeof module === "object" && "default" in module && typeof module.default === "function") {
-		return module.default as ExtensionFactory;
+	if (module && typeof module === "object" && "default" in module && typeof (module as { default: unknown }).default === "function") {
+		return (module as { default: ExtensionFactory }).default;
 	}
 	throw new Error(`Extension does not export a factory function: ${extensionPath}`);
 }

@@ -46,6 +46,7 @@ import { resolveProfile, type AgentProfile, type AgentProfileId } from "./profil
 import { isPermissionMode, type PermissionMode } from "./tools/policy.ts";
 import { installPermissionHooks, PermissionGate } from "./hooks.ts";
 import { PackageHost } from "./extensions/index.ts";
+import { asAgentMessage, customTypeOf, toJsonValue } from "./extensions/runtime.ts";
 import { setResourceEnabled } from "./packages/enable.ts";
 import type { ViewApproval, ViewPackageStatus } from "../../protocol/src/view.ts";
 
@@ -212,6 +213,7 @@ export class Operator implements BootedHarness {
 			bound,
 		);
 		await operator.ensureTitle();
+		operator.syncExtensionRuntime();
 		return operator;
 	}
 
@@ -394,6 +396,7 @@ export class Operator implements BootedHarness {
 		if (!auth) throw new Error(`${found.provider} is not authenticated`);
 		await this.lane.setModel({ provider: found.provider, modelId: found.id }, this.context);
 		this.model = { provider: found.provider, id: found.id };
+		this.syncExtensionRuntime();
 	}
 
 	async openSession(sessionId: string): Promise<void> {
@@ -605,6 +608,7 @@ export class Operator implements BootedHarness {
 			await this.resumeOpen();
 			await this.ensureTitle();
 			await this.rememberProject();
+			this.syncExtensionRuntime();
 		} catch (error) {
 			this.applyCwd(previous.cwd);
 			await this.packages.load({ cwd: this.cwd, agentDir: this.paths.dir, models: this.models });
@@ -627,6 +631,7 @@ export class Operator implements BootedHarness {
 			this.open = bound.open;
 			this.model = bound.model;
 			await this.permissions.loadForCwd(this.cwd, this.context, this.lane);
+			this.syncExtensionRuntime();
 			throw error;
 		}
 	}
@@ -705,6 +710,41 @@ export class Operator implements BootedHarness {
 			const result = await restored.resume(this.context);
 			if (!result.ok) throw result.error;
 		}
+	}
+
+	private syncExtensionRuntime(): void {
+		this.packages.bindRuntime({
+			cwd: this.cwd,
+			sessionId: this.session.metadata.id,
+			sessionFile: this.session.metadata.path,
+			models: this.models,
+			model: this.model,
+			thinkingLevel: this.thinkingLevel,
+			profile: this.profile,
+			skills: this.packages.skills(),
+			sessionsRoot: this.sessionsRoot,
+			context: this.context,
+			isIdle: () => true,
+			abortParent: () => {
+				void this.lane.abort(this.context);
+			},
+			appendEntry: (customType, data) => {
+				void this.lane.appendCustomEntry(customType, toJsonValue(data), this.context);
+			},
+			appendMessage: (message) => {
+				void this.lane.appendMessage(message, this.context);
+			},
+			sendMessage: (message) => {
+				const customType = customTypeOf(message);
+				if (customType) {
+					void this.lane.appendCustomEntry(customType, toJsonValue(message), this.context);
+					return;
+				}
+				const agentMessage = asAgentMessage(message);
+				if (agentMessage) void this.lane.appendMessage(agentMessage, this.context);
+			},
+			getSessionName: () => undefined,
+		});
 	}
 
 	async close(): Promise<void> {

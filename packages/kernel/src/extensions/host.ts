@@ -2,8 +2,8 @@ import type { AgentHarness, AgentHarnessTool, ExecutionToolContext } from "@eare
 import { type Api, createProvider, envApiKeyAuth, type MutableModels, type Provider } from "@earendil-works/pi-ai";
 import { getApiProvider } from "@earendil-works/pi-ai/compat";
 import { runCommand } from "../tools/builtin/run.ts";
+import { asAgentMessage, createExtensionContext, customTypeOf, type ExtensionRuntimeSource } from "./runtime.ts";
 import {
-	createPrintContext,
 	defineTool,
 	noOpUI,
 	type ExtensionAPI,
@@ -36,6 +36,7 @@ export function createExtensionHost(options: {
 	models: MutableModels;
 	diagnostics: PackageDiagnostic[];
 	providerSnapshots: Map<string, Provider | undefined>;
+	runtime?: ExtensionRuntimeSource;
 }): {
 	api: ExtensionAPI;
 	record: LoadedExtension;
@@ -54,6 +55,13 @@ export function createExtensionHost(options: {
 	const flags = new Map<string, boolean | string>();
 	const pendingProviders: Array<{ id: string; provider: Provider }> = [];
 	const channels = new Map<string, Set<(data: unknown) => void>>();
+	const listedTools = () => [
+		...(options.runtime?.()?.profile.tools() ?? []).map((tool) => ({
+			name: tool.name,
+			description: tool.description,
+		})),
+		...record.tools.map((tool) => ({ name: tool.name, description: tool.description })),
+	];
 
 	const unsupported = (capability: string): void => {
 		if (!record.unsupported.includes(capability)) record.unsupported.push(capability);
@@ -97,20 +105,28 @@ export function createExtensionHost(options: {
 		registerEntryRenderer() {
 			unsupported("registerEntryRenderer");
 		},
-		sendMessage() {
-			unsupported("sendMessage");
+		sendMessage(message) {
+			const live = options.runtime?.();
+			if (!live) return;
+			const customType = customTypeOf(message);
+			if (customType) {
+				live.appendEntry(customType, message);
+				return;
+			}
+			const agentMessage = asAgentMessage(message);
+			if (agentMessage) live.appendMessage(agentMessage);
 		},
 		sendUserMessage() {
 			unsupported("sendUserMessage");
 		},
-		appendEntry() {
-			unsupported("appendEntry");
+		appendEntry(customType, data) {
+			options.runtime?.()?.appendEntry(customType, data);
 		},
 		setSessionName() {
 			unsupported("setSessionName");
 		},
 		getSessionName() {
-			return undefined;
+			return options.runtime?.()?.getSessionName();
 		},
 		setLabel() {
 			unsupported("setLabel");
@@ -120,10 +136,10 @@ export function createExtensionHost(options: {
 			return { code: result.code, stdout: result.stdout, stderr: result.stderr };
 		},
 		getActiveTools() {
-			return record.tools.map((tool) => tool.name);
+			return listedTools().map((tool) => tool.name);
 		},
 		getAllTools() {
-			return record.tools.map((tool) => ({ name: tool.name, description: tool.description }));
+			return listedTools();
 		},
 		setActiveTools() {
 			unsupported("setActiveTools");
@@ -136,7 +152,7 @@ export function createExtensionHost(options: {
 			return false;
 		},
 		getThinkingLevel() {
-			return "off";
+			return options.runtime?.()?.thinkingLevel ?? "off";
 		},
 		setThinkingLevel() {
 			unsupported("setThinkingLevel");
@@ -199,6 +215,7 @@ export async function runExtensionFactory(
 export function wrapExtensionTool(
 	definition: ToolDefinition,
 	cwd: string,
+	runtime: ExtensionRuntimeSource = () => undefined,
 ): AgentHarnessTool<ExecutionToolContext> {
 	return {
 		name: definition.name,
@@ -214,13 +231,18 @@ export function wrapExtensionTool(
 				params,
 				context.abortSignal,
 				onUpdate,
-				createPrintContext(cwd, context.abortSignal),
+				createExtensionContext(cwd, context.abortSignal, runtime()),
 			);
 		},
 	};
 }
 
-export function installExtensionHooks(harness: AgentHarness, loaded: LoadedExtension[], cwd: string): void {
+export function installExtensionHooks(
+	harness: AgentHarness,
+	loaded: LoadedExtension[],
+	cwd: string,
+	runtime: ExtensionRuntimeSource = () => undefined,
+): void {
 	for (const extension of loaded) {
 		for (const hook of extension.hooks) {
 			if (hook.event === "tool_call" || hook.event === "before_tool") {
@@ -231,7 +253,7 @@ export function installExtensionHooks(harness: AgentHarness, loaded: LoadedExten
 						toolName: event.toolName,
 						input: event.args,
 					};
-					const result = (await hook.handler(payload, createPrintContext(cwd))) as
+					const result = (await hook.handler(payload, createExtensionContext(cwd, undefined, runtime()))) as
 						| { block?: boolean; reason?: string; terminate?: boolean }
 						| undefined;
 					if (result?.block) {
@@ -255,7 +277,7 @@ export function installExtensionHooks(harness: AgentHarness, loaded: LoadedExten
 						isError: event.isError,
 						usage: event.usage,
 					};
-					const result = (await hook.handler(payload, createPrintContext(cwd))) as
+					const result = (await hook.handler(payload, createExtensionContext(cwd, undefined, runtime()))) as
 						| { content?: typeof event.content; details?: typeof event.details; isError?: boolean; usage?: typeof event.usage }
 						| undefined;
 					if (!result) return undefined;
