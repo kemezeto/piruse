@@ -1,5 +1,4 @@
-import { FolderIcon } from "tdesign-icons-react";
-import { useState } from "react";
+import { FolderAddIcon, FolderIcon } from "tdesign-icons-react";
 import type { ViewProjectOption } from "@protocol/view";
 import { basenameOf } from "../format";
 import { Menu } from "./Menu";
@@ -9,13 +8,14 @@ export function ProjectPicker({
 	projects,
 	running,
 	onOpen,
+	onPick,
 }: {
 	cwd: string;
 	projects: ViewProjectOption[];
 	running: boolean;
 	onOpen: (cwd: string) => void;
+	onPick: () => void;
 }) {
-	const [path, setPath] = useState("");
 	const current = projects.find((project) => project.cwd === cwd);
 	const name = current?.name ?? (cwd ? basenameOf(cwd) : "选择工作空间");
 	return (
@@ -32,28 +32,17 @@ export function ProjectPicker({
 		>
 			{(close) => (
 				<>
-					<form
-						className="popover-open"
-						onSubmit={(event) => {
-							event.preventDefault();
-							const next = path.trim();
-							if (!next) return;
-							onOpen(next);
-							setPath("");
+					<button
+						type="button"
+						className="popover-new"
+						onClick={() => {
+							onPick();
 							close();
 						}}
 					>
-						<input
-							className="popover-search"
-							value={path}
-							autoFocus
-							placeholder="项目目录路径…"
-							onChange={(event) => setPath(event.target.value)}
-						/>
-						<button type="submit" className="popover-open-go" disabled={!path.trim()}>
-							打开
-						</button>
-					</form>
+						<FolderAddIcon size={14} />
+						打开文件夹…
+					</button>
 					<div className="popover-list" role="listbox" aria-label="Projects">
 						{projects.length === 0 ? <p className="popover-empty">No recent projects</p> : null}
 						{projects.map((project) => (
@@ -84,4 +73,3 @@ export function ProjectPicker({
 		</Menu>
 	);
 }
-

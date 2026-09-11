@@ -11,5 +11,5 @@
 		"skipLibCheck": true,
 		"types": ["node"]
 	},
-	"include": ["packages/**/*.ts", "apps/cli/**/*.ts", "apps/web/host.ts", "apps/flags.ts"]
+	"include": ["packages/**/*.ts", "apps/cli/**/*.ts", "apps/web/host.ts", "apps/web/pick-directory.ts", "apps/flags.ts"]
 }

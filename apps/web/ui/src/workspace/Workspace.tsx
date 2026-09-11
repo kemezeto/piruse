@@ -65,6 +65,7 @@ export function Workspace({
 			projects={state.projects ?? []}
 			running={state.running}
 			onOpen={(cwd) => onCommand({ type: "openProject", cwd })}
+			onPick={() => onCommand({ type: "pickProject" })}
 		/>
 	) : null;
 	const permissionPicker = state ? (

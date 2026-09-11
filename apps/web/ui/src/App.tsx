@@ -23,6 +23,7 @@ export function App() {
 				}}
 				onNewChat={() => sendCommand({ type: "newSession" })}
 				onOpenProject={(cwd) => sendCommand({ type: "openProject", cwd })}
+				onPickProject={() => sendCommand({ type: "pickProject" })}
 				onOpenSession={(sessionId) => sendCommand({ type: "openSession", sessionId })}
 				onArchive={(sessionId) => sendCommand({ type: "archiveSession", sessionId })}
 				onSettings={() => setSettingsOpen(true)}

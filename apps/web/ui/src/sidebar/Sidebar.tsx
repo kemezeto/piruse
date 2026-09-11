@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ChatBubbleHelpIcon, ChevronRightIcon, FolderAddIcon, FolderIcon, FolderOpen1Icon, MenuFoldIcon, MenuUnfoldIcon, SettingIcon } from "tdesign-icons-react";
 import type { ViewProjectOption, ViewSessionOption } from "@protocol/view";
 import { ConfirmDialog } from "../dialog/Confirm";
@@ -16,6 +16,7 @@ export function Sidebar({
 	onCollapsed,
 	onNewChat,
 	onOpenProject,
+	onPickProject,
 	onOpenSession,
 	onArchive,
 	onSettings,
@@ -28,16 +29,14 @@ export function Sidebar({
 	onCollapsed: (collapsed: boolean) => void;
 	onNewChat: () => void;
 	onOpenProject: (cwd: string) => void;
+	onPickProject: () => void;
 	onOpenSession: (sessionId: string) => void;
 	onArchive: (sessionId: string) => void;
 	onSettings: () => void;
 }) {
-	const [openPath, setOpenPath] = useState(false);
-	const [path, setPath] = useState("");
 	const [expanded, setExpanded] = useState<Set<string>>(() => new Set([cwd]));
 	const [pending, setPending] = useState<ViewSessionOption | null>(null);
 	const now = useClock();
-	const addRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
 		setExpanded((current) => {
@@ -47,15 +46,6 @@ export function Sidebar({
 			return next;
 		});
 	}, [cwd]);
-
-	useEffect(() => {
-		if (!openPath) return;
-		const onPointer = (event: PointerEvent): void => {
-			if (!addRef.current?.contains(event.target as Node)) setOpenPath(false);
-		};
-		window.addEventListener("pointerdown", onPointer);
-		return () => window.removeEventListener("pointerdown", onPointer);
-	}, [openPath]);
 
 	const toggleProject = (projectCwd: string, sessionCount: number): void => {
 		setExpanded((current) => {
@@ -94,41 +84,16 @@ export function Sidebar({
 				<div className="sidebar-repos">
 					<div className="sidebar-repos-head">
 						<span>Repositories</span>
-						<div className="sidebar-add" ref={addRef}>
-							<button
-								type="button"
-								className="sidebar-icon-btn"
-								disabled={running}
-								aria-label="打开项目目录"
-								title={running ? "请先停止当前运行" : "选择目录开启项目"}
-								onClick={() => setOpenPath((current) => !current)}
-							>
-								<FolderAddIcon size={16} />
-							</button>
-							{openPath ? (
-								<form
-									className="sidebar-open"
-									onSubmit={(event) => {
-										event.preventDefault();
-										const next = path.trim();
-										if (!next) return;
-										onOpenProject(next);
-										setPath("");
-										setOpenPath(false);
-									}}
-								>
-									<input
-										value={path}
-										autoFocus
-										placeholder="项目目录路径…"
-										onChange={(event) => setPath(event.target.value)}
-									/>
-									<button type="submit" disabled={!path.trim()}>
-										打开
-									</button>
-								</form>
-							) : null}
-						</div>
+						<button
+							type="button"
+							className="sidebar-icon-btn"
+							disabled={running}
+							aria-label="打开项目目录"
+							title={running ? "请先停止当前运行" : "选择文件夹开启项目"}
+							onClick={onPickProject}
+						>
+							<FolderAddIcon size={16} />
+						</button>
 					</div>
 					<div className="sidebar-tree">
 						{projects.map((project) => {

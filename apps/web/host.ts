@@ -15,6 +15,7 @@ import type { LaneSnapshot } from "@earendil-works/pi-agent-core";
 import { reduceLaneSnapshot } from "@earendil-works/pi-agent-core/harness/runtime/reducer";
 import { createServer as createViteServer } from "vite";
 import { WebSocketServer, type WebSocket } from "ws";
+import { pickDirectory } from "./pick-directory.ts";
 import { parseArgs } from "../flags.ts";
 import { bootHarness, type Operator } from "../../packages/kernel/src/create-kernel.ts";
 import { projectView } from "../../packages/kernel/src/view.ts";
@@ -221,6 +222,15 @@ wss.on("connection", (socket) => {
 						dropWatches();
 						try {
 							await operator.newSession();
+						} finally {
+							await rebind();
+						}
+					} else if (message.type === "pickProject") {
+						const cwd = await pickDirectory();
+						if (!cwd) return;
+						dropWatches();
+						try {
+							await operator.openProject(cwd);
 						} finally {
 							await rebind();
 						}
