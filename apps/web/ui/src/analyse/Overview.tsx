@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
 import { FilterIcon, RefreshIcon } from "tdesign-icons-react";
 import { Popup } from "tdesign-react";
-import type { ViewModelOption, ViewProjectOption } from "@protocol/view";
+import type { ViewModelOption, ViewPackageItem, ViewProjectOption } from "@protocol/view";
 import { relativeTime } from "../format";
 import { DateRangePicker } from "./DateRangePicker";
 import { EChart } from "./EChart";
+import { SkillUsage } from "./SkillUsage";
+import { ToolUsage } from "./ToolUsage";
 import { activityBarOption, calendarHeatOption, hourHeatOption, METRIC_LABEL } from "./charts";
 import { buildOverviewStats, sortedHot, type ActivityMetric, type HotSort, type TimeGrain } from "./demo";
 import { resolveRange, todayShanghai, type OverviewRange } from "./range";
@@ -43,9 +45,11 @@ function formatOne(value: number): string {
 export function Overview({
 	projects,
 	models,
+	skills,
 }: {
 	projects: ViewProjectOption[];
 	models: ViewModelOption[];
+	skills: ViewPackageItem[];
 }) {
 	const today = todayShanghai();
 	const [range, setRange] = useState<OverviewRange>({ mode: "relative", preset: "1y" });
@@ -59,8 +63,8 @@ export function Overview({
 
 	const resolved = useMemo(() => resolveRange(range, today), [range, today]);
 	const stats = useMemo(
-		() => buildOverviewStats(resolved, projects, models, model),
-		[resolved, projects, models, model],
+		() => buildOverviewStats(resolved, projects, models, model, skills),
+		[resolved, projects, models, model, skills],
 	);
 	const heatOption = useMemo(
 		() => calendarHeatOption(stats.days, activityMetric, resolved.start, resolved.end),
@@ -222,7 +226,7 @@ export function Overview({
 						</div>
 					</div>
 					<ol className="ov-hot">
-						{hot.map((item, index) => (
+						{hot.slice(0, 6).map((item, index) => (
 							<li key={item.id}>
 								<span className="ov-hot-n">{index + 1}</span>
 								<div className="ov-hot-copy">
@@ -240,6 +244,8 @@ export function Overview({
 					</ol>
 				</section>
 			</div>
+			<ToolUsage tools={stats.tools} categories={stats.toolCategories} weeks={stats.toolWeeks} total={stats.toolCalls} />
+			<SkillUsage skills={stats.skills} trend={stats.skillTrend} total={stats.skillCalls} />
 		</div>
 	);
 }

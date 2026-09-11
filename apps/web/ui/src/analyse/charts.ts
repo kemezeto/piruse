@@ -1,7 +1,7 @@
 import type { EChartsCoreOption } from "echarts/core";
-import type { ActivityMetric, DayStat, TimeGrain } from "./demo";
+import type { ActivityMetric, DayStat, SkillTrendPoint, TimeGrain, WeekPoint } from "./demo";
 import { seriesFor } from "./demo";
-import { formatZhDate, formatZhShort } from "./range";
+import { formatMd, formatZhDate, formatZhShort } from "./range";
 
 export const METRIC_LABEL: Record<ActivityMetric, string> = {
 	messages: "消息",
@@ -200,4 +200,134 @@ export function hourHeatOption(grid: number[][], unit: string): EChartsCoreOptio
 			},
 		],
 	};
+}
+
+export function toolWeekOption(weeks: WeekPoint[]): EChartsCoreOption {
+	const interval = Math.max(0, Math.floor((Math.max(weeks.length, 1) - 1) / 7));
+	return {
+		tooltip: {
+			...tooltipChrome,
+			trigger: "axis",
+			axisPointer: { type: "shadow" },
+			formatter: (params: unknown) => {
+				const point = tooltipPoint(params);
+				const date = String(point?.name ?? "");
+				if (!date) return "";
+				return `${formatMd(date)}: ${formatInt(Number(point?.value ?? 0))} 次调用`;
+			},
+		},
+		grid: { left: 4, right: 4, top: 10, bottom: 22 },
+		xAxis: {
+			type: "category",
+			data: weeks.map((item) => item.date),
+			axisTick: { show: false },
+			axisLine: { show: false },
+			axisLabel: {
+				color: "#8a8a86",
+				fontSize: 11,
+				interval,
+				formatter: (value: string) => formatMd(value),
+			},
+		},
+		yAxis: { type: "value", show: false, splitLine: { show: false } },
+		series: [
+			{
+				type: "bar",
+				data: weeks.map((item) => item.calls),
+				barMaxWidth: 28,
+				itemStyle: { color: "#3b82f6", borderRadius: [2, 2, 0, 0] },
+			},
+		],
+	};
+}
+
+export function skillTrendOption(
+	points: SkillTrendPoint[],
+	names: string[],
+	colors: string[],
+	grain: TimeGrain,
+): EChartsCoreOption {
+	const buckets = new Map<string, Record<string, number>>();
+	for (const point of points) {
+		const date = point.date;
+		const parsed = new Date(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10)));
+		const key =
+			grain === "day"
+				? date
+				: grain === "week"
+					? shiftYmd(date, parsed.getDay() === 0 ? -6 : 1 - parsed.getDay())
+					: date.slice(0, 7);
+		const current = buckets.get(key) ?? Object.fromEntries(names.map((name) => [name, 0]));
+		for (const name of names) current[name] = (current[name] ?? 0) + (point.values[name] ?? 0);
+		buckets.set(key, current);
+	}
+	const dates = [...buckets.keys()].sort();
+	const interval = Math.max(0, Math.floor((Math.max(dates.length, 1) - 1) / 7));
+	const peak = Math.max(1, ...dates.flatMap((date) => names.map((name) => buckets.get(date)?.[name] ?? 0)));
+	return {
+		tooltip: {
+			...tooltipChrome,
+			trigger: "axis",
+			formatter: (params: unknown) => {
+				const rows = Array.isArray(params) ? params : [params];
+				const date = String((rows[0] as { name?: string } | undefined)?.name ?? "");
+				if (!date) return "";
+				const label = grain === "month" ? date : formatZhDate(date.length === 10 ? date : `${date}-01`);
+				const lines = rows
+					.map((row) => {
+						const item = row as { seriesName?: string; value?: number };
+						if (!item.seriesName || item.value == null || Number(item.value) === 0) return "";
+						return `${item.seriesName}: ${formatInt(Number(item.value))}`;
+					})
+					.filter(Boolean);
+				return [label, ...lines].join("<br/>");
+			},
+		},
+		legend: { show: false },
+		grid: { left: 8, right: 18, top: 18, bottom: 8, containLabel: true },
+		xAxis: {
+			type: "category",
+			data: dates,
+			boundaryGap: true,
+			axisTick: { show: false },
+			axisLine: { lineStyle: { color: "#e5e7eb" } },
+			axisLabel: {
+				color: "#8a8a86",
+				fontSize: 11,
+				hideOverlap: false,
+				interval,
+				margin: 10,
+				formatter: (value: string) => (value.length === 7 ? `${Number(value.slice(5, 7))}月` : formatZhShort(value)),
+			},
+		},
+		yAxis: {
+			type: "value",
+			min: 0,
+			max: Math.max(3, peak + 1),
+			minInterval: 1,
+			splitLine: { lineStyle: { color: "#f0f0ee" } },
+			axisLabel: { color: "#8a8a86", fontSize: 11 },
+		},
+		series: names.map((name, index) => ({
+			name,
+			type: "line",
+			showSymbol: grain === "month" || dates.length <= 20,
+			symbolSize: 7,
+			smooth: false,
+			connectNulls: true,
+			clip: false,
+			data: dates.map((date) => buckets.get(date)?.[name] ?? 0),
+			itemStyle: { color: colors[index] ?? "#16a34a" },
+			lineStyle: { width: grain === "day" ? 1.5 : 2 },
+		})),
+	};
+}
+
+function shiftYmd(ymd: string, days: number): string {
+	const date = new Date(Number(ymd.slice(0, 4)), Number(ymd.slice(5, 7)) - 1, Number(ymd.slice(8, 10)));
+	date.setDate(date.getDate() + days);
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	const day = String(date.getDate()).padStart(2, "0");
+	return `${year}-${month}-${day}`;
 }

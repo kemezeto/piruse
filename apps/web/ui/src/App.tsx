@@ -55,7 +55,11 @@ export function App() {
 				onSettings={() => setSettingsOpen(true)}
 			/>
 			{agent === "analyse" ? (
-				<AnalyseWorkspace projects={state?.projects ?? []} models={state?.models ?? []} />
+				<AnalyseWorkspace
+					projects={state?.projects ?? []}
+					models={state?.models ?? []}
+					skills={state?.packages?.skills ?? []}
+				/>
 			) : (
 				<Workspace state={state} notice={notice} line={line} onCommand={sendCommand} onSend={sendPrompt} />
 			)}

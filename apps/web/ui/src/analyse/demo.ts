@@ -1,4 +1,4 @@
-import type { ViewModelOption, ViewProjectOption } from "@protocol/view";
+import type { ViewModelOption, ViewPackageItem, ViewProjectOption } from "@protocol/view";
 import { addDays, eachDay, mondayOf, parseYmd, sundayOf, type ResolvedRange } from "./range";
 
 export type ActivityMetric = "messages" | "sessions" | "tokens";
@@ -23,6 +23,42 @@ export interface HotSession {
 	model: string;
 }
 
+export interface ToolStat {
+	name: string;
+	category: string;
+	calls: number;
+	sessions: number;
+	share: number;
+	color: string;
+}
+
+export interface ToolCategoryStat {
+	name: string;
+	calls: number;
+	share: number;
+	color: string;
+}
+
+export interface WeekPoint {
+	date: string;
+	calls: number;
+}
+
+export interface SkillStat {
+	name: string;
+	agents: { name: string; calls: number; share: number }[];
+	projects: { name: string; calls: number }[];
+	calls: number;
+	sessions: number;
+	lastUsed: string;
+	color: string;
+}
+
+export interface SkillTrendPoint {
+	date: string;
+	values: Record<string, number>;
+}
+
 export interface OverviewStats {
 	sessions: number;
 	messages: number;
@@ -37,6 +73,13 @@ export interface OverviewStats {
 	hourGrid: number[][];
 	hot: HotSession[];
 	aborted: number;
+	tools: ToolStat[];
+	toolCategories: ToolCategoryStat[];
+	toolWeeks: WeekPoint[];
+	toolCalls: number;
+	skills: SkillStat[];
+	skillTrend: SkillTrendPoint[];
+	skillCalls: number;
 }
 
 const FALLBACK_TITLES = [
@@ -51,6 +94,39 @@ const FALLBACK_TITLES = [
 	{ title: "Temperature gradient visualization", project: "new_work" },
 	{ title: "Internal mobile app solution", project: "new_work" },
 ];
+
+const TOOL_CATALOG: { name: string; category: string; color: string; weight: number }[] = [
+	{ name: "shell_command", category: "Bash", color: "#ef4444", weight: 9.8 },
+	{ name: "read_file_v2", category: "Other", color: "#6b7280", weight: 3.0 },
+	{ name: "apply_patch", category: "Edit", color: "#f59e0b", weight: 2.7 },
+	{ name: "exec_command", category: "Bash", color: "#ef4444", weight: 2.7 },
+	{ name: "write_stdin", category: "Bash", color: "#ef4444", weight: 2.4 },
+	{ name: "Read", category: "Read", color: "#3b82f6", weight: 2.0 },
+	{ name: "edit_file_v2", category: "Other", color: "#6b7280", weight: 1.9 },
+	{ name: "StrReplace", category: "Edit", color: "#f59e0b", weight: 1.8 },
+	{ name: "bash", category: "Bash", color: "#ef4444", weight: 1.4 },
+	{ name: "grep", category: "Grep", color: "#a855f7", weight: 0.85 },
+	{ name: "write", category: "Write", color: "#22c55e", weight: 0.37 },
+	{ name: "glob", category: "Glob", color: "#14b8a6", weight: 0.27 },
+	{ name: "edit", category: "Tool", color: "#4b5563", weight: 0.22 },
+	{ name: "task", category: "Task", color: "#ec4899", weight: 0.05 },
+];
+
+const CATEGORY_ORDER = ["Bash", "Other", "Edit", "Read", "Grep", "Write", "Glob", "Tool", "Task"];
+const CATEGORY_COLOR: Record<string, string> = Object.fromEntries(TOOL_CATALOG.map((item) => [item.category, item.color]));
+
+const FALLBACK_SKILLS = [
+	"frontend-design",
+	"canvas",
+	"cursor-guide",
+	"create-skill",
+	"impeccable",
+	"create-subagent",
+	"frontend-app-builder",
+	"pdf",
+];
+
+const SKILL_COLORS = ["#16a34a", "#0d9488", "#eab308", "#22c55e", "#6366f1", "#94a3b8", "#f97316", "#06b6d4"];
 
 function rng(seed: number): () => number {
 	let state = seed >>> 0;
@@ -113,6 +189,7 @@ export function buildOverviewStats(
 	projects: ViewProjectOption[],
 	models: ViewModelOption[],
 	modelFilter: string,
+	packageSkills: ViewPackageItem[] = [],
 ): OverviewStats {
 	const random = rng(hash(`${range.start}:${range.end}:${modelFilter}`));
 	const modelFactor = modelFilter === "全部" ? 1 : 0.38 + (hash(modelFilter) % 40) / 100;
@@ -181,6 +258,7 @@ export function buildOverviewStats(
 	const sessions = days.reduce((sum, day) => sum + day.sessions, 0);
 	const activeDays = days.filter((day) => day.sessions > 0).length;
 	const top = projectMessages[0];
+	const usage = buildUsageStats(range, random, modelFactor, projectNames, packageSkills);
 
 	return {
 		sessions,
@@ -196,6 +274,7 @@ export function buildOverviewStats(
 		hourGrid,
 		hot,
 		aborted: hot.filter((item) => item.aborted).length,
+		...usage,
 	};
 }
 
@@ -239,4 +318,90 @@ export function sortedHot(hot: HotSession[], sort: HotSort): HotSession[] {
 		return b.messages - a.messages;
 	});
 	return copy;
+}
+
+function weeksOf(start: string, end: string): string[] {
+	const weeks: string[] = [];
+	let cursor = mondayOf(start);
+	while (cursor <= end) {
+		weeks.push(cursor);
+		cursor = addDays(cursor, 7);
+	}
+	return weeks;
+}
+
+function buildUsageStats(
+	range: ResolvedRange,
+	random: () => number,
+	modelFactor: number,
+	projectNames: string[],
+	packageSkills: ViewPackageItem[],
+): Pick<OverviewStats, "tools" | "toolCategories" | "toolWeeks" | "toolCalls" | "skills" | "skillTrend" | "skillCalls"> {
+	const scale = 2800 * modelFactor;
+	const tools = TOOL_CATALOG.map((item) => {
+		const calls = Math.max(8, Math.round(item.weight * scale * (0.86 + random() * 0.28)));
+		return {
+			name: item.name,
+			category: item.category,
+			calls,
+			sessions: Math.max(1, Math.round(calls / (18 + random() * 40))),
+			share: 0,
+			color: item.color,
+		};
+	}).sort((a, b) => b.calls - a.calls);
+	const toolCalls = tools.reduce((sum, item) => sum + item.calls, 0);
+	for (const item of tools) item.share = toolCalls === 0 ? 0 : item.calls / toolCalls;
+
+	const byCategory = new Map<string, number>();
+	for (const item of tools) byCategory.set(item.category, (byCategory.get(item.category) ?? 0) + item.calls);
+	const toolCategories = CATEGORY_ORDER.filter((name) => byCategory.has(name)).map((name) => {
+		const calls = byCategory.get(name) ?? 0;
+		return { name, calls, share: toolCalls === 0 ? 0 : calls / toolCalls, color: CATEGORY_COLOR[name] ?? "#6b7280" };
+	});
+
+	const weekKeys = weeksOf(range.start, range.end);
+	const toolWeeks = weekKeys.map((date, index) => {
+		const recency = 0.25 + Math.pow((index + 1) / Math.max(1, weekKeys.length), 1.4) * 0.9;
+		const dip = index > weekKeys.length * 0.55 && index < weekKeys.length * 0.78 ? 0.18 : 1;
+		return { date, calls: Math.round((180 + random() * 920) * recency * dip * modelFactor) };
+	});
+
+	const skillNames = [
+		...packageSkills.map((item) => item.name),
+		...FALLBACK_SKILLS.filter((name) => !packageSkills.some((item) => item.name === name)),
+	].slice(0, 10);
+	const projects = projectNames.length > 0 ? projectNames : ["com_web", "empty_window"];
+	const skills = skillNames.map((name, index) => {
+		const calls = Math.max(1, Math.round((4.4 - index * 0.38) * (0.75 + random() * 0.5)));
+		const sessions = Math.max(1, Math.min(calls, Math.round(calls * (0.7 + random() * 0.3))));
+		const agentCalls = Math.max(1, calls);
+		return {
+			name,
+			color: SKILL_COLORS[index % SKILL_COLORS.length] ?? "#16a34a",
+			calls,
+			sessions,
+			lastUsed: addDays(range.start, Math.floor(random() * Math.max(1, eachDay(range.start, range.end).length))),
+			agents: [{ name: index === 6 ? "codex" : "cursor", calls: agentCalls, share: 1 }],
+			projects: projects.slice(0, 1 + (index % 3)).map((project, projectIndex) => ({
+				name: project,
+				calls: Math.max(1, calls - projectIndex),
+			})),
+		};
+	});
+	skills.sort((a, b) => b.calls - a.calls || a.name.localeCompare(b.name));
+	const skillCalls = skills.reduce((sum, item) => sum + item.calls, 0);
+
+	const days = eachDay(range.start, range.end);
+	const featured = skills.slice(0, 6).map((item) => item.name);
+	const skillTrend = days.map((date, index) => {
+		const recency = Math.pow((index + 1) / Math.max(1, days.length), 3.2);
+		const values: Record<string, number> = {};
+		for (const name of featured) {
+			values[name] = random() > 0.92 - recency * 0.2 ? 1 + Math.floor(random() * 2) : 0;
+		}
+		values["其他"] = random() > 0.94 - recency * 0.15 ? 1 : 0;
+		return { date, values };
+	});
+
+	return { tools, toolCategories, toolWeeks, toolCalls, skills, skillTrend, skillCalls };
 }

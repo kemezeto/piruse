@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ViewModelOption, ViewProjectOption } from "@protocol/view";
+import type { ViewModelOption, ViewPackageItem, ViewProjectOption } from "@protocol/view";
 import { Overview } from "../analyse/Overview";
 
 const TABS = [
@@ -39,9 +39,11 @@ function writeAnalyseTab(id: AnalyseTabId): void {
 export function AnalyseWorkspace({
 	projects,
 	models,
+	skills,
 }: {
 	projects: ViewProjectOption[];
 	models: ViewModelOption[];
+	skills: ViewPackageItem[];
 }) {
 	const [tab, setTab] = useState(readAnalyseTab);
 	const current = TABS.find((item) => item.id === tab) ?? TABS[0];
@@ -76,7 +78,7 @@ export function AnalyseWorkspace({
 				role="tabpanel"
 				aria-labelledby={`analyse-tab-${current.id}`}
 			>
-				{current.id === "overview" ? <Overview projects={projects} models={models} /> : null}
+				{current.id === "overview" ? <Overview projects={projects} models={models} skills={skills} /> : null}
 			</section>
 		</main>
 	);

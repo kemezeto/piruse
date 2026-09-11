@@ -100,6 +100,11 @@ export function formatZhShort(ymd: string): string {
 	return `${date.getMonth() + 1}月${date.getDate()}日`;
 }
 
+export function formatMd(ymd: string): string {
+	const date = parseYmd(ymd);
+	return `${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 export function resolveRange(range: OverviewRange, today = todayShanghai()): ResolvedRange {
 	if (range.mode === "relative") {
 		const span = { "1d": 0, "7d": 6, "30d": 29, "90d": 89, "1y": 364 }[range.preset];

@@ -641,11 +641,177 @@ textarea {
 	height: 12.2rem;
 }
 
+.ov-chart-week {
+	height: 10.5rem;
+}
+
+.ov-chart-skill {
+	height: 17.5rem;
+}
+
+.ov-muted {
+	color: var(--muted);
+	font-size: 0.78rem;
+}
+
+.ov-kicker {
+	margin: 0.15rem 0 0.55rem;
+	color: var(--muted);
+	font-size: 0.72rem;
+	font-weight: 550;
+}
+
+.ov-swatch {
+	width: 0.55rem;
+	height: 0.55rem;
+	border-radius: 999px;
+	flex: none;
+}
+
+.ov-tool-hot,
+.ov-cats,
+.ov-skills {
+	list-style: none;
+	margin: 0 0 1.05rem;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.62rem;
+}
+
+.ov-tool-hot li {
+	display: grid;
+	grid-template-columns: 0.7rem minmax(8rem, 1fr) 4.5rem 4.6rem 5.2rem 3.6rem;
+	gap: 0.7rem;
+	align-items: center;
+	font-size: 0.84rem;
+}
+
+.ov-tool-hot li > .ov-dim,
+.ov-tool-hot li > .ov-num {
+	text-align: right;
+}
+
+.ov-tool-hot strong {
+	font-weight: 650;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.ov-dim {
+	color: var(--muted);
+	font-size: 0.8rem;
+}
+
+.ov-num {
+	font-variant-numeric: tabular-nums;
+	text-align: right;
+	font-size: 0.84rem;
+}
+
+.ov-cats li {
+	display: grid;
+	grid-template-columns: 4.2rem minmax(0, 1fr) 4.4rem 3.4rem;
+	gap: 0.7rem;
+	align-items: center;
+	font-size: 0.84rem;
+}
+
+.ov-cat-name {
+	color: var(--ink);
+}
+
+.ov-track {
+	height: 0.72rem;
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--ink) 7%, var(--bg));
+	overflow: hidden;
+}
+
+.ov-track i {
+	display: block;
+	height: 100%;
+	border-radius: inherit;
+}
+
+.ov-skills li {
+	display: grid;
+	grid-template-columns: minmax(10rem, 0.95fr) minmax(8rem, 1fr) 2.2rem 4.6rem 4.2rem;
+	gap: 0.85rem;
+	align-items: center;
+}
+
+.ov-skills li > .ov-num,
+.ov-skills li > .ov-dim {
+	text-align: right;
+}
+
+.ov-skill-copy {
+	min-width: 0;
+}
+
+.ov-skill-copy strong {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 0.78rem;
+	font-weight: 600;
+}
+
+.ov-skill-copy p {
+	margin: 0.08rem 0 0;
+	color: var(--muted);
+	font-size: 0.68rem;
+	line-height: 1.35;
+}
+
+.ov-skill-copy b {
+	color: var(--ink);
+	font-weight: 650;
+}
+
+.ov-skill-bar i {
+	background: #16a34a;
+}
+
+.ov-skill-trend-head {
+	margin-top: 0.2rem;
+}
+
+.ov-legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.55rem 0.9rem;
+	margin-top: 0.45rem;
+	color: var(--muted);
+	font-size: 0.75rem;
+}
+
+.ov-legend span {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.32rem;
+}
+
+.ov-legend i {
+	width: 0.55rem;
+	height: 0.55rem;
+	border-radius: 0.12rem;
+}
+
 .ov-split {
 	display: grid;
 	grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
 	gap: 0.75rem;
-	align-items: start;
+	align-items: stretch;
+}
+
+.ov-split > .ov-card {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
 }
 
 .ov-hot {
@@ -661,7 +827,7 @@ textarea {
 	grid-template-columns: 1.4rem minmax(0, 1fr) auto;
 	gap: 0.55rem;
 	align-items: start;
-	padding: 0.55rem 0.1rem;
+	padding: 0.32rem 0.1rem;
 }
 
 .ov-hot li + li {
@@ -878,6 +1044,20 @@ textarea {
 
 	.ov-kpis {
 		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+
+	.ov-tool-hot li {
+		grid-template-columns: 0.7rem minmax(0, 1fr) 3.8rem 3.8rem 4.8rem 3.2rem;
+		gap: 0.45rem;
+	}
+
+	.ov-skills li {
+		grid-template-columns: minmax(0, 1.1fr) minmax(5rem, 0.8fr) 2.2rem 4.2rem 3.8rem;
+		gap: 0.5rem;
+	}
+
+	.ov-cats li {
+		grid-template-columns: 3.8rem minmax(0, 1fr) auto auto;
 	}
 }
 

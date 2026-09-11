@@ -1,11 +1,11 @@
 import { useEffect, useRef } from "react";
 import { init, use } from "echarts/core";
-import { BarChart, HeatmapChart } from "echarts/charts";
+import { BarChart, HeatmapChart, LineChart } from "echarts/charts";
 import { CalendarComponent, GridComponent, TooltipComponent, VisualMapComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 import type { ECharts, EChartsCoreOption } from "echarts/core";
 
-use([BarChart, HeatmapChart, CalendarComponent, GridComponent, TooltipComponent, VisualMapComponent, CanvasRenderer]);
+use([BarChart, HeatmapChart, LineChart, CalendarComponent, GridComponent, TooltipComponent, VisualMapComponent, CanvasRenderer]);
 
 export function EChart({ option, className }: { option: EChartsCoreOption; className?: string }) {
 	const host = useRef<HTMLDivElement>(null);
@@ -26,7 +26,10 @@ export function EChart({ option, className }: { option: EChartsCoreOption; class
 	}, []);
 
 	useEffect(() => {
-		chart.current?.setOption(option, true);
+		const instance = chart.current;
+		if (!instance) return;
+		instance.setOption(option, true);
+		instance.resize();
 	}, [option]);
 
 	return <div ref={host} className={className} />;
