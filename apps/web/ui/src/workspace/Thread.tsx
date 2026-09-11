@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Markdown from "react-markdown";
 import { ChevronRightIcon } from "tdesign-icons-react";
 import type { ViewItem } from "@protocol/view";
@@ -47,10 +47,7 @@ function Item({ item }: { item: ViewItem }) {
 }
 
 function ToolCard({ item }: { item: Extract<ViewItem, { kind: "tool" }> }) {
-	const [open, setOpen] = useState(item.running || Boolean(item.result));
-	useEffect(() => {
-		if (item.running) setOpen(true);
-	}, [item.running]);
+	const [open, setOpen] = useState(false);
 	return (
 		<details
 			className={`tool${item.running ? " running" : ""}${item.isError ? " is-error" : ""}`}

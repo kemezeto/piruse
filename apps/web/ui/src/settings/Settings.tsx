@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { EducationIcon, ExtensionIcon, FolderMoveIcon, PaletteIcon, Robot2Icon } from "tdesign-icons-react";
+import { EducationIcon, ExtensionIcon, FolderMoveIcon, Robot2Icon } from "tdesign-icons-react";
 import { Dialog } from "tdesign-react";
 import type {
 	ViewArchivedSession,
@@ -13,10 +13,9 @@ import { ArchivePane } from "./ArchivePane";
 import { ModelsPane } from "./ModelsPane";
 import { PackagesPane } from "./PackagesPane";
 
-type Pane = "appearance" | "models" | "extensions" | "skills" | "archive";
+type Pane = "models" | "extensions" | "skills" | "archive";
 
-const NAV: { id: Pane; label: string; icon: typeof PaletteIcon }[] = [
-	{ id: "appearance", label: "外观", icon: PaletteIcon },
+const NAV: { id: Pane; label: string; icon: typeof Robot2Icon }[] = [
 	{ id: "models", label: "模型", icon: Robot2Icon },
 	{ id: "extensions", label: "扩展", icon: ExtensionIcon },
 	{ id: "skills", label: "技能", icon: EducationIcon },
@@ -80,18 +79,7 @@ export function SettingsDialog({
 					})}
 				</nav>
 				<div className="dialog-pane">
-					{pane === "appearance" ? (
-						<div className="settings-page">
-							<div className="settings-page-head">
-								<h2 className="settings-page-title">外观</h2>
-							</div>
-							<section className="settings-block">
-								<div className="settings-card">
-									<p className="dialog-placeholder">外观设置稍后提供。</p>
-								</div>
-							</section>
-						</div>
-					) : pane === "archive" ? (
+					{pane === "archive" ? (
 						<ArchivePane
 							sessions={sessions}
 							archivedSessions={archivedSessions}
