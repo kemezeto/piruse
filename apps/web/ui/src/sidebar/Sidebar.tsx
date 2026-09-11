@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { ChatBubbleHelpIcon, ChevronRightIcon, FolderAddIcon, FolderIcon, FolderOpen1Icon, MenuFoldIcon, MenuUnfoldIcon, SettingIcon } from "tdesign-icons-react";
+import { AnalyticsIcon, ChatBubbleHelpIcon, ChevronRightIcon, CodeIcon, FolderAddIcon, FolderIcon, FolderOpen1Icon, MenuFoldIcon, MenuUnfoldIcon, SettingIcon } from "tdesign-icons-react";
 import type { ViewProjectOption, ViewSessionOption } from "@protocol/view";
+import type { AgentKind } from "../agent";
 import { ConfirmDialog } from "../dialog/Confirm";
 import logo from "../view/logo.png";
 import { ChatRow } from "./ChatRow";
@@ -8,11 +9,13 @@ import { ChatRow } from "./ChatRow";
 const COLLAPSED_KEY = "piruse.sidebar.collapsed";
 
 export function Sidebar({
+	agent,
 	cwd,
 	sessionId,
 	projects,
 	running,
 	collapsed,
+	onAgent,
 	onCollapsed,
 	onNewChat,
 	onOpenProject,
@@ -21,11 +24,13 @@ export function Sidebar({
 	onArchive,
 	onSettings,
 }: {
+	agent: AgentKind;
 	cwd: string;
 	sessionId: string;
 	projects: ViewProjectOption[];
 	running: boolean;
 	collapsed: boolean;
+	onAgent: (agent: AgentKind) => void;
 	onCollapsed: (collapsed: boolean) => void;
 	onNewChat: () => void;
 	onOpenProject: (cwd: string) => void;
@@ -69,6 +74,28 @@ export function Sidebar({
 				>
 					{collapsed ? <MenuUnfoldIcon size={16} /> : <MenuFoldIcon size={16} />}
 				</button>
+				<div className="sidebar-agents" role="group" aria-label="切换 Agent">
+					<button
+						type="button"
+						className={`sidebar-agent${agent === "coding" ? " active" : ""}`}
+						aria-pressed={agent === "coding"}
+						title="Coding Agent"
+						onClick={() => onAgent("coding")}
+					>
+						<CodeIcon size={16} />
+						{collapsed ? null : <span>Coding</span>}
+					</button>
+					<button
+						type="button"
+						className={`sidebar-agent${agent === "analyse" ? " active" : ""}`}
+						aria-pressed={agent === "analyse"}
+						title="Analyse Agent"
+						onClick={() => onAgent("analyse")}
+					>
+						<AnalyticsIcon size={16} />
+						{collapsed ? null : <span>Analyse</span>}
+					</button>
+				</div>
 				<button
 					type="button"
 					className="sidebar-new"

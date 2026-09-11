@@ -96,6 +96,68 @@ textarea {
 	cursor: not-allowed;
 }
 
+.sidebar-agents {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 0.2rem;
+	padding: 0.15rem;
+	background: color-mix(in srgb, var(--ink) 5.5%, transparent);
+	border-radius: 0.6rem;
+}
+
+.sidebar-agent {
+	border: 0;
+	background: transparent;
+	color: var(--muted);
+	border-radius: 0.48rem;
+	padding: 0.34rem 0.3rem;
+	cursor: pointer;
+	font-size: 0.75rem;
+	font-weight: 550;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.32rem;
+	min-width: 0;
+}
+
+.sidebar-agent span {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.sidebar-agent:hover:not(.active) {
+	color: var(--ink);
+}
+
+.sidebar-agent.active {
+	background: var(--surface);
+	color: var(--ink);
+	box-shadow: 0 1px 2px rgba(15, 18, 22, 0.05);
+}
+
+.sidebar.collapsed .sidebar-agents {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.25rem;
+	padding: 0;
+	background: transparent;
+}
+
+.sidebar.collapsed .sidebar-agent {
+	width: 1.9rem;
+	height: 1.9rem;
+	padding: 0;
+}
+
+.sidebar.collapsed .sidebar-agent.active {
+	background: var(--chip);
+	box-shadow: none;
+}
+
 .sidebar-new {
 	display: flex;
 	align-items: center;
@@ -324,6 +386,506 @@ textarea {
 	display: flex;
 	flex-direction: column;
 	background: var(--surface);
+}
+
+.analyse-workspace {
+	background: color-mix(in srgb, var(--ink) 3.5%, var(--bg));
+}
+
+.analyse-head {
+	flex: none;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	padding: 1.05rem 1.5rem 0.55rem;
+}
+
+.analyse-tabs {
+	display: inline-flex;
+	align-items: center;
+	max-width: 100%;
+	gap: 0.08rem;
+	padding: 0.2rem;
+	background: color-mix(in srgb, var(--ink) 6.5%, var(--bg));
+	border-radius: 999px;
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+
+.analyse-tabs::-webkit-scrollbar {
+	display: none;
+}
+
+.analyse-tab {
+	border: 0;
+	background: transparent;
+	color: var(--muted);
+	border-radius: 999px;
+	padding: 0.38rem 0.95rem;
+	cursor: pointer;
+	font-size: 0.875rem;
+	font-weight: 500;
+	line-height: 1.3;
+	white-space: nowrap;
+}
+
+.analyse-tab:hover:not(.active) {
+	color: var(--ink);
+}
+
+.analyse-tab.active {
+	background: var(--surface);
+	color: var(--ink);
+	font-weight: 600;
+	box-shadow: 0 1px 2px rgba(15, 18, 22, 0.08);
+}
+
+.analyse-pane {
+	min-height: 0;
+	flex: 1;
+	overflow: auto;
+	scrollbar-width: thin;
+}
+
+.ov {
+	display: flex;
+	flex-direction: column;
+	gap: 0.85rem;
+	padding: 0.35rem 1.35rem 1.6rem;
+}
+
+.ov-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.8rem;
+}
+
+.ov-toolbar-start {
+	display: flex;
+	align-items: center;
+	gap: 0.45rem;
+	min-width: 0;
+	flex-wrap: wrap;
+}
+
+.ov-tool,
+.ov-export {
+	border: 1px solid var(--line);
+	background: var(--surface);
+	color: var(--ink);
+	border-radius: 999px;
+	padding: 0.32rem 0.7rem;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	cursor: pointer;
+	font-size: 0.8rem;
+	font-weight: 500;
+	line-height: 1.2;
+}
+
+.ov-tool.open,
+.ov-tool:hover,
+.ov-export:hover {
+	background: var(--chip);
+}
+
+.ov-tool.ghost {
+	border-color: transparent;
+	background: transparent;
+	color: var(--muted);
+}
+
+.ov-tool.ghost:hover {
+	background: var(--chip);
+	color: var(--ink);
+}
+
+.ov-export {
+	border: 0;
+	background: transparent;
+	color: var(--muted);
+	padding: 0.32rem 0.2rem;
+}
+
+.ov-kpis {
+	display: grid;
+	grid-template-columns: repeat(6, minmax(0, 1fr));
+	gap: 0.65rem;
+}
+
+.ov-kpi {
+	background: var(--surface);
+	border: 1px solid color-mix(in srgb, var(--ink) 6%, transparent);
+	border-radius: 0.85rem;
+	padding: 0.85rem 0.95rem 0.8rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.18rem;
+	min-width: 0;
+	box-shadow: 0 1px 2px rgba(15, 18, 22, 0.03);
+}
+
+.ov-kpi strong {
+	font-size: 1.55rem;
+	font-weight: 650;
+	letter-spacing: -0.03em;
+	line-height: 1.15;
+}
+
+.ov-kpi span,
+.ov-kpi em {
+	color: var(--muted);
+	font-size: 0.75rem;
+	font-style: normal;
+	font-weight: 400;
+}
+
+.ov-kpi em {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.ov-card {
+	background: var(--surface);
+	border: 1px solid color-mix(in srgb, var(--ink) 6%, transparent);
+	border-radius: 0.95rem;
+	padding: 0.85rem 1rem 1rem;
+	box-shadow: 0 1px 2px rgba(15, 18, 22, 0.03);
+	min-width: 0;
+}
+
+.ov-card-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.8rem;
+	margin-bottom: 0.7rem;
+}
+
+.ov-card-head.wrap {
+	align-items: flex-start;
+	flex-wrap: wrap;
+}
+
+.ov-card-head h2 {
+	margin: 0;
+	font-size: 0.92rem;
+	font-weight: 650;
+}
+
+.ov-tz {
+	margin-left: 0.4rem;
+	color: var(--muted);
+	font-size: 0.72rem;
+}
+
+.ov-filters {
+	display: flex;
+	align-items: center;
+	gap: 0.45rem;
+	flex-wrap: wrap;
+}
+
+.ov-pills {
+	display: flex;
+	align-items: center;
+	gap: 0.12rem;
+	padding: 0.12rem;
+	background: color-mix(in srgb, var(--ink) 5.5%, var(--bg));
+	border-radius: 999px;
+}
+
+.ov-pills button {
+	border: 0;
+	background: transparent;
+	color: var(--muted);
+	border-radius: 999px;
+	padding: 0.22rem 0.62rem;
+	cursor: pointer;
+	font-size: 0.75rem;
+	font-weight: 500;
+}
+
+.ov-pills button.active {
+	background: var(--surface);
+	color: var(--ink);
+	box-shadow: 0 1px 2px rgba(15, 18, 22, 0.06);
+}
+
+.ov-flag {
+	border-radius: 999px;
+	padding: 0.18rem 0.5rem;
+	background: color-mix(in srgb, #d97706 12%, var(--surface));
+	color: #b45309;
+	font-size: 0.72rem;
+	font-weight: 550;
+}
+
+.ov-chart {
+	width: 100%;
+	min-width: 0;
+}
+
+.ov-chart-heat {
+	height: 10.2rem;
+}
+
+.ov-chart-bar {
+	height: 10rem;
+}
+
+.ov-chart-hour {
+	height: 12.2rem;
+}
+
+.ov-split {
+	display: grid;
+	grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+	gap: 0.75rem;
+	align-items: start;
+}
+
+.ov-hot {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+.ov-hot li {
+	display: grid;
+	grid-template-columns: 1.4rem minmax(0, 1fr) auto;
+	gap: 0.55rem;
+	align-items: start;
+	padding: 0.55rem 0.1rem;
+}
+
+.ov-hot li + li {
+	border-top: 1px solid color-mix(in srgb, var(--ink) 6%, transparent);
+}
+
+.ov-hot-n,
+.ov-hot strong {
+	color: var(--muted);
+	font-size: 0.78rem;
+	font-variant-numeric: tabular-nums;
+	padding-top: 0.12rem;
+}
+
+.ov-hot strong {
+	color: var(--ink);
+	font-weight: 550;
+}
+
+.ov-hot-copy {
+	min-width: 0;
+}
+
+.ov-hot-copy p {
+	margin: 0;
+	font-size: 0.84rem;
+	font-weight: 550;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.ov-hot-copy span {
+	color: var(--muted);
+	font-size: 0.72rem;
+}
+
+.ov-dot {
+	display: inline-block;
+	width: 0.42rem;
+	height: 0.42rem;
+	margin-right: 0.35rem;
+	border-radius: 999px;
+	background: var(--danger);
+	vertical-align: middle;
+}
+
+.ov-date-pop {
+	width: 22.5rem;
+	padding: 0.7rem;
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: 0.9rem;
+	box-shadow: var(--shadow);
+}
+
+.ov-date {
+	width: 21rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.7rem;
+}
+
+.ov-seg {
+	display: grid;
+	grid-template-columns: 1fr 1fr 1fr;
+	gap: 0.2rem;
+	padding: 0.18rem;
+	background: color-mix(in srgb, var(--ink) 6%, var(--bg));
+	border-radius: 0.7rem;
+}
+
+.ov-seg button {
+	border: 0;
+	background: transparent;
+	color: var(--muted);
+	border-radius: 0.55rem;
+	padding: 0.42rem 0.3rem;
+	cursor: pointer;
+	font-size: 0.82rem;
+	font-weight: 550;
+}
+
+.ov-seg button.active {
+	background: var(--surface);
+	color: var(--ink);
+	box-shadow: 0 1px 2px rgba(15, 18, 22, 0.06);
+}
+
+.ov-seg button.active.brand {
+	background: var(--brand);
+	color: var(--td-text-color-anti);
+	box-shadow: none;
+}
+
+.ov-date-rel {
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+}
+
+.ov-date-rel button {
+	border: 0;
+	background: transparent;
+	text-align: left;
+	padding: 0.48rem 0.65rem;
+	border-radius: 0.55rem;
+	cursor: pointer;
+	color: var(--ink);
+	font-size: 0.84rem;
+}
+
+.ov-date-rel button:hover,
+.ov-date-rel button.active {
+	background: var(--chip);
+}
+
+.ov-cal-nav {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0.15rem 0.2rem;
+}
+
+.ov-cal-nav strong {
+	font-size: 0.92rem;
+}
+
+.ov-cal-nav button {
+	width: 1.8rem;
+	height: 1.8rem;
+	border: 0;
+	background: transparent;
+	border-radius: 0.4rem;
+	color: var(--muted);
+	cursor: pointer;
+	display: grid;
+	place-items: center;
+}
+
+.ov-cal-nav button:hover {
+	background: var(--chip);
+	color: var(--ink);
+}
+
+.ov-cal-week,
+.ov-cal-grid {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	gap: 0.12rem;
+	text-align: center;
+}
+
+.ov-cal-week {
+	color: var(--muted);
+	font-size: 0.72rem;
+	padding: 0.1rem 0;
+}
+
+.ov-cal-grid button {
+	border: 0;
+	background: transparent;
+	height: 2rem;
+	border-radius: 0.45rem;
+	cursor: pointer;
+	color: var(--ink);
+	font-size: 0.82rem;
+}
+
+.ov-cal-grid button.muted {
+	color: color-mix(in srgb, var(--muted) 70%, transparent);
+}
+
+.ov-cal-grid button.selected {
+	background: color-mix(in srgb, var(--brand) 16%, transparent);
+}
+
+.ov-cal-grid button.anchor,
+.ov-cal-grid button.selected.anchor {
+	background: var(--brand);
+	color: var(--td-text-color-anti);
+}
+
+.ov-date-custom {
+	display: flex;
+	flex-direction: column;
+	gap: 0.65rem;
+	padding: 0.2rem 0.15rem 0.35rem;
+}
+
+.ov-date-custom label {
+	display: flex;
+	flex-direction: column;
+	gap: 0.28rem;
+	color: var(--muted);
+	font-size: 0.75rem;
+}
+
+.ov-date-custom input {
+	border: 1px solid var(--line);
+	background: var(--bg);
+	border-radius: 0.55rem;
+	padding: 0.42rem 0.55rem;
+	color: var(--ink);
+	font: inherit;
+	font-size: 0.85rem;
+}
+
+@media (max-width: 1100px) {
+	.ov-kpis,
+	.ov-split {
+		grid-template-columns: 1fr 1fr;
+	}
+
+	.ov-kpis {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 720px) {
+	.ov-kpis,
+	.ov-split {
+		grid-template-columns: 1fr;
+	}
 }
 
 .workspace-head {
@@ -1793,4 +2355,14 @@ textarea {
 	box-sizing: border-box;
 	font-size: 0.78rem;
 	line-height: 1.4;
+}
+
+.t-popup__content.ov-date-pop {
+	box-sizing: border-box;
+	width: 22.5rem;
+	padding: 0.7rem;
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: 0.9rem;
+	box-shadow: var(--shadow);
 }
