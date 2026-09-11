@@ -1068,22 +1068,34 @@ textarea {
 	}
 }
 
-.use-mode {
-	border: 1px solid var(--ink);
+.use-switch {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+}
+
+.use-switch button {
+	border: 1px solid var(--line);
 	background: var(--surface);
 	color: var(--ink);
 	border-radius: 0.55rem;
-	padding: 0.32rem 0.75rem;
+	padding: 0.32rem 0.8rem;
 	min-height: 2.05rem;
 	display: inline-flex;
 	align-items: center;
 	font-size: 0.8rem;
 	font-weight: 600;
-	cursor: default;
+	cursor: pointer;
 }
 
-.use-mode.active {
-	box-shadow: 0 0 0 1px var(--ink);
+.use-switch button:hover:not(.active) {
+	background: var(--chip);
+}
+
+.use-switch button.active {
+	border-color: var(--ink);
+	background: var(--ink);
+	color: var(--surface);
 }
 
 .use-hint {
@@ -1096,6 +1108,10 @@ textarea {
 	display: grid;
 	grid-template-columns: repeat(10, minmax(0, 1fr));
 	gap: 0.55rem;
+}
+
+.use-kpis.tokens {
+	grid-template-columns: repeat(9, minmax(0, 1fr));
 }
 
 .use-kpi {

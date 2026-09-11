@@ -324,8 +324,25 @@ export function skillTrendOption(
 	};
 }
 
+export type UsageValueKind = "usd" | "token";
+
 export function formatUsd(value: number): string {
 	return `US$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+export function formatCompactToken(value: number): string {
+	const abs = Math.abs(value);
+	if (abs >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+	if (abs >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
+	return Math.round(value).toLocaleString("en-US");
+}
+
+export function formatUsageValue(value: number, kind: UsageValueKind): string {
+	return kind === "usd" ? formatUsd(value) : formatCompactToken(value);
+}
+
+function formatUsageAxis(value: number, kind: UsageValueKind): string {
+	return kind === "usd" ? `US$ ${Number(value).toFixed(2)}` : formatCompactToken(value);
 }
 
 function luminance(hex: string): number {
@@ -337,9 +354,14 @@ function luminance(hex: string): number {
 	return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 }
 
-export function costTrendOption(days: UsageDay[], slices: UsageSlice[]): EChartsCoreOption {
+export function costTrendOption(
+	days: UsageDay[],
+	slices: UsageSlice[],
+	kind: UsageValueKind = "usd",
+): EChartsCoreOption {
 	const names = slices.map((item) => item.name);
 	const interval = Math.max(0, Math.floor((Math.max(days.length, 1) - 1) / 4));
+	const minValue = kind === "usd" ? 0.0005 : 0.5;
 	return {
 		tooltip: {
 			...tooltipChrome,
@@ -352,8 +374,8 @@ export function costTrendOption(days: UsageDay[], slices: UsageSlice[]): ECharts
 				const lines = rows
 					.map((row) => {
 						const item = row as { seriesName?: string; value?: number; marker?: string };
-						if (!item.seriesName || item.value == null || Number(item.value) < 0.0005) return "";
-						return `${item.marker ?? ""}${item.seriesName}: ${formatUsd(Number(item.value))}`;
+						if (!item.seriesName || item.value == null || Number(item.value) < minValue) return "";
+						return `${item.marker ?? ""}${item.seriesName}: ${formatUsageValue(Number(item.value), kind)}`;
 					})
 					.filter(Boolean);
 				return [`${formatZhDate(date)}`, ...lines].join("<br/>");
@@ -381,25 +403,27 @@ export function costTrendOption(days: UsageDay[], slices: UsageSlice[]): ECharts
 			axisLabel: {
 				color: "#8a8a86",
 				fontSize: 11,
-				formatter: (value: number) => `US$ ${Number(value).toFixed(2)}`,
+				formatter: (value: number) => formatUsageAxis(value, kind),
 			},
 		},
 		series: names.map((name, index) => ({
 			name,
 			type: "line",
-			stack: "cost",
+			stack: "usage",
 			smooth: 0.35,
 			showSymbol: false,
 			lineStyle: { width: 0 },
 			areaStyle: { opacity: 0.92 },
 			emphasis: { focus: "series" },
 			itemStyle: { color: slices[index]?.color ?? "#3b6cf0" },
-			data: days.map((day) => Number((day.byName[name] ?? 0).toFixed(4))),
+			data: days.map((day) =>
+				kind === "usd" ? Number((day.byName[name] ?? 0).toFixed(4)) : Math.round(day.byName[name] ?? 0),
+			),
 		})),
 	};
 }
 
-export function costTreemapOption(slices: UsageSlice[]): EChartsCoreOption {
+export function costTreemapOption(slices: UsageSlice[], kind: UsageValueKind = "usd"): EChartsCoreOption {
 	const total = slices.reduce((sum, item) => sum + item.cost, 0);
 	return {
 		tooltip: {
@@ -408,7 +432,7 @@ export function costTreemapOption(slices: UsageSlice[]): EChartsCoreOption {
 				const item = params as { name?: string; value?: number };
 				if (!item.name) return "";
 				const share = total === 0 ? 0 : (Number(item.value) / total) * 100;
-				return `${item.name}<br/>${formatUsd(Number(item.value ?? 0))} · ${share.toFixed(1)}%`;
+				return `${item.name}<br/>${formatUsageValue(Number(item.value ?? 0), kind)} · ${share.toFixed(1)}%`;
 			},
 		},
 		series: [
@@ -427,7 +451,7 @@ export function costTreemapOption(slices: UsageSlice[]): EChartsCoreOption {
 					show: true,
 					formatter: (params: { name: string; value: number }) => {
 						const share = total === 0 ? 0 : (params.value / total) * 100;
-						return `${params.name}\n${formatUsd(params.value)}\n${share.toFixed(1)}%`;
+						return `${params.name}\n${formatUsageValue(params.value, kind)}\n${share.toFixed(1)}%`;
 					},
 					fontSize: 12,
 					fontWeight: 600,
@@ -441,7 +465,7 @@ export function costTreemapOption(slices: UsageSlice[]): EChartsCoreOption {
 				},
 				data: slices.map((item) => ({
 					name: item.name,
-					value: Number(item.cost.toFixed(4)),
+					value: kind === "usd" ? Number(item.cost.toFixed(4)) : Math.round(item.cost),
 					itemStyle: { color: item.color },
 					label: { color: luminance(item.color) > 0.62 ? "#1c1c1c" : "#fff" },
 				})),

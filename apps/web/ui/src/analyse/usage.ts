@@ -4,6 +4,8 @@ import { eachDay, parseYmd, type ResolvedRange } from "./range";
 export type UsageDim = "project" | "agent" | "model";
 export type TrendDim = "project" | "agent";
 export type AttrView = "treemap" | "list";
+export type UsageMode = "cost" | "token";
+export type TokenKind = "all" | "input" | "output" | "cache";
 
 export interface UsageSlice {
 	name: string;
@@ -113,6 +115,34 @@ function slicesOf(names: string[], totals: Record<string, number>, extra = "å…¶ä
 	if (rest > 0.0005) featured.push({ name: extra, cost: rest, color: "#94a3b8" });
 	const total = featured.reduce((sum, item) => sum + item.cost, 0);
 	return featured.map((item) => ({ ...item, share: total === 0 ? 0 : item.cost / total }));
+}
+
+export function tokenTotal(stats: UsageStats, kind: TokenKind = "all"): number {
+	if (kind === "input") return stats.inputTokens;
+	if (kind === "output") return stats.outputTokens;
+	if (kind === "cache") return stats.cachedTokens;
+	return stats.inputTokens + stats.cachedTokens + stats.outputTokens;
+}
+
+export function scaleMetric(
+	days: UsageDay[],
+	slices: UsageSlice[],
+	scale: number,
+): { days: UsageDay[]; slices: UsageSlice[] } {
+	if (scale === 1) return { days, slices };
+	return {
+		days: days.map((day) => {
+			const byName: Record<string, number> = {};
+			let total = 0;
+			for (const [name, value] of Object.entries(day.byName)) {
+				const next = value * scale;
+				byName[name] = next;
+				total += next;
+			}
+			return { date: day.date, total, byName };
+		}),
+		slices: slices.map((item) => ({ ...item, cost: item.cost * scale })),
+	};
 }
 
 function rollup(
