@@ -1,5 +1,6 @@
 import type { EChartsCoreOption } from "echarts/core";
 import type { ActivityMetric, DayStat, SkillTrendPoint, TimeGrain, WeekPoint } from "./demo";
+import type { UsageDay, UsageSlice } from "./usage";
 import { seriesFor } from "./demo";
 import { formatMd, formatZhDate, formatZhShort } from "./range";
 
@@ -320,6 +321,132 @@ export function skillTrendOption(
 			itemStyle: { color: colors[index] ?? "#16a34a" },
 			lineStyle: { width: grain === "day" ? 1.5 : 2 },
 		})),
+	};
+}
+
+export function formatUsd(value: number): string {
+	return `US$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function luminance(hex: string): number {
+	const raw = hex.replace("#", "");
+	const n = Number.parseInt(raw.length === 3 ? raw.split("").map((ch) => ch + ch).join("") : raw, 16);
+	const r = (n >> 16) & 255;
+	const g = (n >> 8) & 255;
+	const b = n & 255;
+	return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+}
+
+export function costTrendOption(days: UsageDay[], slices: UsageSlice[]): EChartsCoreOption {
+	const names = slices.map((item) => item.name);
+	const interval = Math.max(0, Math.floor((Math.max(days.length, 1) - 1) / 4));
+	return {
+		tooltip: {
+			...tooltipChrome,
+			trigger: "axis",
+			axisPointer: { type: "line" },
+			formatter: (params: unknown) => {
+				const rows = Array.isArray(params) ? params : [params];
+				const date = String((rows[0] as { name?: string } | undefined)?.name ?? "");
+				if (!date) return "";
+				const lines = rows
+					.map((row) => {
+						const item = row as { seriesName?: string; value?: number; marker?: string };
+						if (!item.seriesName || item.value == null || Number(item.value) < 0.0005) return "";
+						return `${item.marker ?? ""}${item.seriesName}: ${formatUsd(Number(item.value))}`;
+					})
+					.filter(Boolean);
+				return [`${formatZhDate(date)}`, ...lines].join("<br/>");
+			},
+		},
+		legend: { show: false },
+		grid: { left: 8, right: 12, top: 18, bottom: 8, containLabel: true },
+		xAxis: {
+			type: "category",
+			boundaryGap: false,
+			data: days.map((item) => item.date),
+			axisTick: { show: false },
+			axisLine: { lineStyle: { color: "#e5e7eb" } },
+			axisLabel: {
+				color: "#8a8a86",
+				fontSize: 11,
+				interval,
+				formatter: (value: string) => formatZhShort(value),
+			},
+		},
+		yAxis: {
+			type: "value",
+			min: 0,
+			splitLine: { lineStyle: { color: "#f0f0ee" } },
+			axisLabel: {
+				color: "#8a8a86",
+				fontSize: 11,
+				formatter: (value: number) => `US$ ${Number(value).toFixed(2)}`,
+			},
+		},
+		series: names.map((name, index) => ({
+			name,
+			type: "line",
+			stack: "cost",
+			smooth: 0.35,
+			showSymbol: false,
+			lineStyle: { width: 0 },
+			areaStyle: { opacity: 0.92 },
+			emphasis: { focus: "series" },
+			itemStyle: { color: slices[index]?.color ?? "#3b6cf0" },
+			data: days.map((day) => Number((day.byName[name] ?? 0).toFixed(4))),
+		})),
+	};
+}
+
+export function costTreemapOption(slices: UsageSlice[]): EChartsCoreOption {
+	const total = slices.reduce((sum, item) => sum + item.cost, 0);
+	return {
+		tooltip: {
+			...tooltipChrome,
+			formatter: (params: unknown) => {
+				const item = params as { name?: string; value?: number };
+				if (!item.name) return "";
+				const share = total === 0 ? 0 : (Number(item.value) / total) * 100;
+				return `${item.name}<br/>${formatUsd(Number(item.value ?? 0))} · ${share.toFixed(1)}%`;
+			},
+		},
+		series: [
+			{
+				type: "treemap",
+				width: "100%",
+				height: "100%",
+				top: 0,
+				left: 0,
+				right: 0,
+				bottom: 0,
+				roam: false,
+				nodeClick: false,
+				breadcrumb: { show: false },
+				label: {
+					show: true,
+					formatter: (params: { name: string; value: number }) => {
+						const share = total === 0 ? 0 : (params.value / total) * 100;
+						return `${params.name}\n${formatUsd(params.value)}\n${share.toFixed(1)}%`;
+					},
+					fontSize: 12,
+					fontWeight: 600,
+					lineHeight: 18,
+					overflow: "truncate",
+				},
+				itemStyle: {
+					borderColor: "#fff",
+					borderWidth: 3,
+					gapWidth: 3,
+				},
+				data: slices.map((item) => ({
+					name: item.name,
+					value: Number(item.cost.toFixed(4)),
+					itemStyle: { color: item.color },
+					label: { color: luminance(item.color) > 0.62 ? "#1c1c1c" : "#fff" },
+				})),
+			},
+		],
 	};
 }
 
