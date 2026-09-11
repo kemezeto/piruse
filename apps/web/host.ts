@@ -288,6 +288,20 @@ wss.on("connection", (socket) => {
 						await operator.setProviderKey(message.provider, message.apiKey);
 						dropWatches();
 						await rebind();
+					} else if (message.type === "setSkillEnabled" && message.id && typeof message.enabled === "boolean") {
+						dropWatches();
+						try {
+							await operator.setSkillEnabled(message.id, message.enabled);
+						} finally {
+							await rebind();
+						}
+					} else if (message.type === "setExtensionEnabled" && message.id && typeof message.enabled === "boolean") {
+						dropWatches();
+						try {
+							await operator.setExtensionEnabled(message.id, message.enabled);
+						} finally {
+							await rebind();
+						}
 					}
 				});
 			} catch (error: unknown) {

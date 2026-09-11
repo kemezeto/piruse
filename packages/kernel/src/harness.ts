@@ -46,6 +46,7 @@ import { resolveProfile, type AgentProfile, type AgentProfileId } from "./profil
 import { isPermissionMode, type PermissionMode } from "./tools/policy.ts";
 import { installPermissionHooks, PermissionGate } from "./hooks.ts";
 import { PackageHost } from "./extensions/index.ts";
+import { setResourceEnabled } from "./packages/enable.ts";
 import type { ViewApproval, ViewPackageStatus } from "../../protocol/src/view.ts";
 
 export interface BootOptions {
@@ -104,6 +105,8 @@ export interface BootedHarness {
 	}): Promise<void>;
 	setProviderKey(provider: string, apiKey: string): Promise<void>;
 	packageStatus(): ViewPackageStatus;
+	setSkillEnabled(id: string, enabled: boolean): Promise<void>;
+	setExtensionEnabled(id: string, enabled: boolean): Promise<void>;
 	isRunning(): Promise<boolean>;
 }
 
@@ -359,6 +362,24 @@ export class Operator implements BootedHarness {
 
 	packageStatus(): ViewPackageStatus {
 		return this.packages.view();
+	}
+
+	async setSkillEnabled(id: string, enabled: boolean): Promise<void> {
+		await this.setPackageResourceEnabled("skills", id, enabled);
+	}
+
+	async setExtensionEnabled(id: string, enabled: boolean): Promise<void> {
+		await this.setPackageResourceEnabled("extensions", id, enabled);
+	}
+
+	private async setPackageResourceEnabled(
+		kind: "skills" | "extensions",
+		id: string,
+		enabled: boolean,
+	): Promise<void> {
+		if (await this.isRunning()) throw new Error("Stop the current run before changing packages.");
+		await setResourceEnabled({ cwd: this.cwd, agentDir: this.paths.dir, kind, id, enabled });
+		await this.replaceSession(() => this.repo.open(this.session.metadata, this.context));
 	}
 
 	async isRunning(): Promise<boolean> {

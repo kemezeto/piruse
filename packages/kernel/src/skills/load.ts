@@ -1,16 +1,17 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { agentPaths, resolveAgentDir } from "../models/paths.ts";
+import { resolveAgentDir } from "../models/paths.ts";
 import {
 	agentsSkillsDir,
 	collectPackageSkillFiles,
 	collectSkillFiles,
 	listInstalledPackageDirs,
 	parentDirName,
+	pathEntries,
 	resolveConfiguredPath,
 	uniqueExisting,
 } from "../packages/discover.ts";
-import { loadPackageSettings } from "../packages/settings.ts";
+import { listInstalledResources } from "../packages/inventory.ts";
 import { parseFrontmatter } from "./frontmatter.ts";
 
 export interface Skill {
@@ -65,18 +66,42 @@ export function formatSkillsForPrompt(skills: Skill[], fileReadTool: "read" | "b
 }
 
 export async function loadUserSkills(options: LoadSkillsOptions): Promise<LoadSkillsResult> {
-	const agentDir = resolveAgentDir(options.agentDir);
-	const settings = await loadPackageSettings(agentPaths(agentDir).settings);
-	const extra = [...settings.skills, ...(options.skillPaths ?? [])];
-	return loadSkillsSync({ cwd: options.cwd, agentDir, skillPaths: extra });
+	const listed = await listInstalledResources({ cwd: options.cwd, agentDir: options.agentDir });
+	const skills = listed.skills
+		.filter((skill) => skill.enabled)
+		.map((skill) => ({
+			name: skill.name,
+			description: skill.description ?? "",
+			filePath: skill.path,
+			baseDir: skill.baseDir,
+			disableModelInvocation: skill.disableModelInvocation === true,
+		}));
+	if (!options.skillPaths?.length) return { skills, diagnostics: [] };
+	const extra = loadSkillsSync({
+		cwd: options.cwd,
+		agentDir: resolveAgentDir(options.agentDir),
+		skillPaths: pathEntries(options.skillPaths),
+		includeDefaults: false,
+	});
+	return {
+		skills: [...skills, ...extra.skills.filter((skill) => !skills.some((current) => current.name === skill.name))],
+		diagnostics: extra.diagnostics,
+	};
 }
 
-export function loadSkillsSync(options: { cwd: string; agentDir: string; skillPaths: string[] }): LoadSkillsResult {
+export function loadSkillsSync(options: {
+	cwd: string;
+	agentDir: string;
+	skillPaths: string[];
+	includeDefaults?: boolean;
+}): LoadSkillsResult {
 	const files: string[] = [];
-	files.push(...collectSkillFiles(join(options.agentDir, "skills"), "pi"));
-	files.push(...collectSkillFiles(agentsSkillsDir(), "agents"));
-	for (const packageDir of listInstalledPackageDirs(options.agentDir)) {
-		files.push(...collectPackageSkillFiles(packageDir));
+	if (options.includeDefaults !== false) {
+		files.push(...collectSkillFiles(join(options.agentDir, "skills"), "pi"));
+		files.push(...collectSkillFiles(agentsSkillsDir(), "agents"));
+		for (const packageDir of listInstalledPackageDirs(options.agentDir)) {
+			files.push(...collectPackageSkillFiles(packageDir));
+		}
 	}
 	for (const raw of options.skillPaths) {
 		const resolved = resolveConfiguredPath(raw, options.cwd);
@@ -109,6 +134,10 @@ export function loadSkillsSync(options: { cwd: string; agentDir: string; skillPa
 		skills.push(loaded.skill);
 	}
 	return { skills, diagnostics };
+}
+
+export function skillFromFile(filePath: string): Skill | null {
+	return loadSkillFromFile(filePath).skill;
 }
 
 function loadSkillFromFile(filePath: string): { skill: Skill | null; diagnostics: SkillDiagnostic[] } {

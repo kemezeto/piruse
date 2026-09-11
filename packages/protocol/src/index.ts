@@ -11,6 +11,7 @@ export type {
 	ViewArchivedSession,
 	ViewState,
 	ViewPackageStatus,
+	ViewPackageItem,
 	PermissionMode,
 	ApprovalReason,
 } from "./view.ts";

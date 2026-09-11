@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { expandUserPath } from "../session/projects.ts";
 import { readPiManifest } from "./manifest.ts";
 
@@ -181,6 +181,29 @@ export function parentDirName(filePath: string): string {
 
 export function agentsSkillsDir(): string {
 	return join(homedir(), ".agents", "skills");
+}
+
+export function posixRelative(from: string, to: string): string {
+	return relative(from, to).split(sep).join("/");
+}
+
+export function isOverrideEntry(entry: string): boolean {
+	return entry.startsWith("!") || entry.startsWith("+") || entry.startsWith("-");
+}
+
+export function pathEntries(entries: readonly string[]): string[] {
+	return entries.filter((entry) => !isOverrideEntry(entry));
+}
+
+export function npmNameFromSource(source: string): string | undefined {
+	if (!source.startsWith("npm:")) return undefined;
+	const rest = source.slice(4);
+	if (rest.startsWith("@")) {
+		const at = rest.indexOf("@", 1);
+		return at === -1 ? rest : rest.slice(0, at);
+	}
+	const at = rest.indexOf("@");
+	return at === -1 ? rest : rest.slice(0, at);
 }
 
 function readDirSafe(dir: string): string[] {

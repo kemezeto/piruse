@@ -1,16 +1,25 @@
 import { useState } from "react";
-import { FolderMoveIcon, PaletteIcon, Robot2Icon } from "tdesign-icons-react";
+import { EducationIcon, ExtensionIcon, FolderMoveIcon, PaletteIcon, Robot2Icon } from "tdesign-icons-react";
 import { Dialog } from "tdesign-react";
-import type { ViewArchivedSession, ViewProviderChoice, ViewProviderOption, ViewSessionOption } from "@protocol/view";
+import type {
+	ViewArchivedSession,
+	ViewPackageItem,
+	ViewProviderChoice,
+	ViewProviderOption,
+	ViewSessionOption,
+} from "@protocol/view";
 import type { HostCommand } from "../socket";
 import { ArchivePane } from "./ArchivePane";
 import { ModelsPane } from "./ModelsPane";
+import { PackagesPane } from "./PackagesPane";
 
-type Pane = "appearance" | "models" | "archive";
+type Pane = "appearance" | "models" | "extensions" | "skills" | "archive";
 
 const NAV: { id: Pane; label: string; icon: typeof PaletteIcon }[] = [
 	{ id: "appearance", label: "外观", icon: PaletteIcon },
 	{ id: "models", label: "模型", icon: Robot2Icon },
+	{ id: "extensions", label: "扩展", icon: ExtensionIcon },
+	{ id: "skills", label: "技能", icon: EducationIcon },
 	{ id: "archive", label: "存档", icon: FolderMoveIcon },
 ];
 
@@ -22,6 +31,8 @@ export function SettingsDialog({
 	archivedSessions,
 	currentSessionId,
 	running,
+	skills,
+	extensions,
 	onClose,
 	onCommand,
 }: {
@@ -32,6 +43,8 @@ export function SettingsDialog({
 	archivedSessions: ViewArchivedSession[];
 	currentSessionId: string;
 	running: boolean;
+	skills: ViewPackageItem[];
+	extensions: ViewPackageItem[];
 	onClose: () => void;
 	onCommand: HostCommand;
 }) {
@@ -84,6 +97,26 @@ export function SettingsDialog({
 							archivedSessions={archivedSessions}
 							currentSessionId={currentSessionId}
 							running={running}
+							onCommand={onCommand}
+						/>
+					) : pane === "extensions" ? (
+						<PackagesPane
+							title="扩展"
+							lead="查看已安装的扩展。安装和卸载请在终端使用 pi install / pi uninstall，这里只启用或禁用。"
+							empty="还没有安装扩展。在终端运行 pi install 后回到这里管理。"
+							items={extensions}
+							running={running}
+							kind="extension"
+							onCommand={onCommand}
+						/>
+					) : pane === "skills" ? (
+						<PackagesPane
+							title="技能"
+							lead="查看已安装的技能。安装和卸载请在终端使用 pi install / pi uninstall，这里只启用或禁用。"
+							empty="还没有安装技能。在终端运行 pi install 或把 SKILL.md 放到 ~/.pi/agent/skills 后回到这里管理。"
+							items={skills}
+							running={running}
+							kind="skill"
 							onCommand={onCommand}
 						/>
 					) : (

@@ -37,6 +37,8 @@ export function App() {
 				archivedSessions={state?.archivedSessions ?? []}
 				currentSessionId={state?.sessionId ?? ""}
 				running={Boolean(state?.running)}
+				skills={state?.packages?.skills ?? []}
+				extensions={state?.packages?.extensions ?? []}
 				onClose={() => setSettingsOpen(false)}
 				onCommand={sendCommand}
 			/>

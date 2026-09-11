@@ -1,4 +1,5 @@
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
 
 export type PackageSource =
 	| string
@@ -15,6 +16,25 @@ export interface PackageSettings {
 	skills: string[];
 	extensions: string[];
 	packages: PackageSource[];
+}
+
+export function packageSourceString(pkg: PackageSource): string {
+	return typeof pkg === "string" ? pkg : pkg.source;
+}
+
+export async function patchSettingsJson(path: string, patch: (file: Record<string, unknown>) => void): Promise<void> {
+	let record: Record<string, unknown> = {};
+	try {
+		const parsed: unknown = JSON.parse(await readFile(path, "utf8"));
+		if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+			record = parsed as Record<string, unknown>;
+		}
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+	}
+	patch(record);
+	await mkdir(dirname(path), { recursive: true, mode: 0o700 });
+	await writeFile(path, `${JSON.stringify(record, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
 }
 
 function stringList(value: unknown): string[] {

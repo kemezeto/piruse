@@ -136,9 +136,11 @@ export function Workspace({
 
 function packagesLine(status: ViewState["packages"] | undefined): string {
 	if (!status) return "";
+	const skills = status.skills.filter((item) => item.enabled).length;
+	const extensions = status.extensions.filter((item) => item.enabled).length;
 	const parts: string[] = [];
-	if (status.skills.length > 0) parts.push(`技能 ${status.skills.length}`);
-	if (status.extensions.length > 0) parts.push(`扩展 ${status.extensions.length}`);
+	if (skills > 0) parts.push(`技能 ${skills}`);
+	if (extensions > 0) parts.push(`扩展 ${extensions}`);
 	if (status.unsupported.length > 0) parts.push("部分 UI 未接入");
 	const errors = status.diagnostics.filter((item) => item.level === "error").length;
 	if (errors > 0) parts.push(`${errors} 个包加载失败`);

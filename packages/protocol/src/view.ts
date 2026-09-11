@@ -54,9 +54,18 @@ export interface ViewApproval {
 	reason: ApprovalReason;
 }
 
+export interface ViewPackageItem {
+	id: string;
+	name: string;
+	description?: string;
+	source: string;
+	path: string;
+	enabled: boolean;
+}
+
 export interface ViewPackageStatus {
-	skills: string[];
-	extensions: string[];
+	skills: ViewPackageItem[];
+	extensions: ViewPackageItem[];
 	diagnostics: { level: "error" | "warning"; message: string }[];
 	unsupported: string[];
 }
