@@ -1,89 +1,94 @@
-# 目录结构
+# piruse
 
-调用栈是包含关系；源码树按改动理由做成同级，最多嵌三层。**Agent 就是 `packages/kernel`**，不再套一层空的 `agent/`。Web / CLI / Gateway / Desktop 是调用方，不进 kernel。
+本机 coding agent。对话、工具调用、会话和模型都跑在本机；浏览器只渲染界面，不接触 kernel 或模型密钥。
 
-浏览器只看到 `packages/protocol`。UI 禁止 import kernel 或 pi-agent-core。
+Agent 本体是 `packages/kernel`。Web / CLI 是调用方。模型目录和密钥与 [pi](https://github.com/badlogic/pi-mono) 共用 `~/.pi/agent`（`auth.json`、settings、已安装的扩展和技能）。会话写在 `~/.piruse/sessions`。
+
+## Picture
+
+![1](picture/1.jpg)
+
+![2](picture/2.jpg)
+
+![3](picture/3.jpg)
+
+![4](picture/4.jpg)
+
+## 要求
+
+- Node.js ≥ 22.19
+- 在 `~/.pi/agent/auth.json` 配好至少一个模型密钥（和 `pi` 同一份文件），或设置对应 provider 的环境变量
+
+```bash
+npm install
+```
+
+## 启动
+
+本机窗口（默认 `http://127.0.0.1:8787`，只绑回环地址）：
+
+```bash
+npm run web
+npm run web -- --cwd ~/code/other
+npm run web -- --model deepseek/deepseek-v4-flash
+```
+
+命令行跑一轮后退出：
+
+```bash
+npm start -- "这个目录有哪些文件？"
+npm start -- --continue
+npm start -- --model deepseek/deepseek-v4-flash "…"
+```
+
+常用参数：`--cwd`、`--session`、`--continue` / `-c`、`--provider`、`--model`、`--permission read|review|allow`、`--port`、`--no-open`。
+
+## 能做什么
+
+- 读、搜、改文件：`read` / `grep` / `glob` / `write` / `edit` / `bash`
+- 权限：只读、审核、允许。Web 默认审核，危险 bash 仍会拦住
+- 多项目、多会话；归档后可在设置里恢复或删除
+- 设置里管理模型、扩展、技能。安装 / 卸载扩展和技能仍用官方 `pi install` / `pi uninstall`，piruse 只负责发现和启用
+- 已加载的 Pi 扩展可注册工具和 provider。TUI、slash 命令、快捷键在 Web 里不可用
+- `pi-subagents` 的前台 `subagent` 由 piruse 自己的 harness 跑子会话，不包一层 Pi TUI
+
+记忆模块（`memory/internal`、`memory/external`）还没接上。跨轮内容靠会话 jsonl；窗口太大时走 compaction。
+
+## 结构
+
+浏览器只看到 `packages/protocol`。UI 禁止 import kernel 或 `pi-agent-core`。
 
 ```
 piruse/
+  picture/                          # README 截图
   pisource/                         # 只读：学 API，不当产品目录
   packages/
-    protocol/                       # 过线合同
-      src/
-        view.ts                     # 浏览器可见 ViewState
-        commands.ts                 # prompt / setModel / openSession…
-        index.ts
+    protocol/                       # 过线合同（ViewState / commands）
     kernel/                         # Agent 本体
       src/
         create-kernel.ts            # 唯一组装根
-        harness.ts                  # 门面：绑定 session、lane、resume
-        index.ts
-        loop.ts                     # 占位：现在用 pi 的 loop
-        events.ts                   # 占位：事后通知 → UI
-        hooks.ts                    # 占位：可拦截扩展点 → 策略
-        messages.ts                 # transcript 类型与转换
-        view.ts                     # LaneSnapshot → ViewState
-        runtime/                    # 预留：lane / drive / restore
-        session/                    # 会话仓库（打开、续写、列表）
-        compaction/                 # 压窗口阈值与投影（引擎仍在 pi）
-        tools/
-          builtin/                  # 一工具一文件
-          mcp/                      # 预留：MCP → tools
-        skills/                     # 预留：发现 / 解析 / 注入（代码）
+        harness.ts                  # 绑定 session、lane、resume
+        session/                    # 打开、续写、列表、归档
+        tools/builtin/              # 一工具一文件
         models/                     # 目录、鉴权、解析
-        prompt/
-          system.ts                 # 系统提示拼装
-        context/
-          assemble.ts               # 本轮模型输入
-        profile/                    # 人设：提示词 + 工具组合（现在只有 coding）
-        memory/
-          internal/                 # 预留：会话内笔记
-          external/                 # 预留：用户/外部库
+        extensions/                 # 加载 ~/.pi 里已安装的扩展
+        skills/                     # 发现 / 解析 / 注入
+        prompt/                     # 系统提示
+        context/                    # 本轮模型输入
+        compaction/                 # 窗口阈值（切点和摘要仍在 pi）
+        profile/                    # 人设（现在只有 coding）
+        memory/                     # 预留：internal / external
   apps/
     flags.ts                        # cli / web 共用 argv
     cli/                            # 命令行入口
     web/                            # 本机窗口：host + ui
-    gateway/                        # 预留：多客户端入口
-    desktop/                        # 预留：以后的壳
+    gateway/                        # 预留
+    desktop/                        # 预留
   skills/                           # SKILL.md 内容，不是 TypeScript
 ```
 
-## 文件还是目录
+**同级（各改各的）：** session · tools · skills · models · prompt · memory · compaction · profile。换 jsonl 只动 session，加工具只动 `tools/builtin`，换默认模型只动 models。
 
-| 概念 | 形态 | 位置 |
-|---|---|---|
-| agent | 不是文件夹 | `packages/kernel` |
-| harness | 文件，长大再拆 | `kernel/src/harness.ts` |
-| loop | 文件 | `kernel/src/loop.ts` |
-| hooks / events | 两个文件，同级 | `hooks.ts` 能拦、能改；`events.ts` 只能看 |
-| messages | 文件 | `kernel/src/messages.ts`（UI 气泡走 protocol） |
-| system prompt | 文件 | `kernel/src/prompt/system.ts` |
-| tools | 目录 | `kernel/src/tools/`，MCP 是子目录不是顶层包 |
-| skills | 两个目录 | 代码在 `kernel/src/skills/`，内容在仓库根 `skills/` |
-| models | 目录 | `kernel/src/models/`，注入 harness，不是它的子模块 |
-| session | 目录 | `kernel/src/session/` |
-| compaction | 目录 | 压 transcript 窗口，不是 memory |
-| runtime | 预留目录 | 先不从 pi 拷 drive |
-| context | 目录 | 本轮模型输入；不要和取消令牌混在一个文件里 |
-| profile | 目录 | 人设（coding / 以后的 analyse），注入 tools + prompt |
-| memory | 目录 | `internal/` 与 `external/` 同级 |
-| web ui | 应用目录 | `apps/web/` |
-| gateway / desktop | 预留应用 | `apps/gateway/`、`apps/desktop/` |
+**注入：** models、tools、skills、profile 由 `create-kernel.ts` 交给 harness。
 
-## 同级 vs 包含
-
-**同级（各改各的）：** session · tools · skills · models · prompt · memory · compaction · runtime · profile。换 jsonl 只动 session，加工具只动 `tools/builtin`，换默认模型只动 models，换人设只动 `profile/`。
-
-**包含：** harness 使用 session / runtime / hooks / events / compaction；loop 使用 messages + `context/assemble` + model stream。
-
-**注入（不是子目录实现）：** models、tools、memory、skills、profile 由 `create-kernel.ts` 交给 harness。
-
-**子集：** MCP ⊂ tools；internal/external ⊂ memory；cli / web / gateway / desktop ⊂ apps。
-
-## 预留位
-
-只放说明，不写会 `throw` 的假 `index.ts`。
-
-- **现在就有代码：** `session/` · `tools/builtin/` · `models/` · `prompt/` · `compaction/` · `profile/` · protocol
-- **只留位置：** `runtime/` · `memory/internal` · `memory/external` · `tools/mcp` · `apps/gateway` · `apps/desktop`
-- **不要建：** `loop/` 目录、把所有东西塞进 `harness/`、顶层 `mcp/` 包、空的 `analyse` 人设
+当前有代码：`session/` · `tools/builtin/` · `models/` · `prompt/` · `compaction/` · `profile/` · `extensions/` · protocol。只留位置：`runtime/` · `memory/` · `tools/mcp` · `apps/gateway` · `apps/desktop`。
