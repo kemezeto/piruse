@@ -90,6 +90,7 @@ export function Workspace({
 						{line !== "live" ? <i className="dot" /> : null}
 						<span>{state?.sessionTitle ?? "piruse"}</span>
 					</div>
+					{packagesLine(state?.packages) ? <p className="workspace-packages">{packagesLine(state?.packages)}</p> : null}
 				</header>
 			)}
 			<div className="stage" ref={stageRef}>
@@ -131,4 +132,15 @@ export function Workspace({
 			)}
 		</main>
 	);
+}
+
+function packagesLine(status: ViewState["packages"] | undefined): string {
+	if (!status) return "";
+	const parts: string[] = [];
+	if (status.skills.length > 0) parts.push(`技能 ${status.skills.length}`);
+	if (status.extensions.length > 0) parts.push(`扩展 ${status.extensions.length}`);
+	if (status.unsupported.length > 0) parts.push("部分 UI 未接入");
+	const errors = status.diagnostics.filter((item) => item.level === "error").length;
+	if (errors > 0) parts.push(`${errors} 个包加载失败`);
+	return parts.join(" · ");
 }

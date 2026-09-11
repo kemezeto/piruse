@@ -45,7 +45,8 @@ import {
 import { resolveProfile, type AgentProfile, type AgentProfileId } from "./profile/index.ts";
 import { isPermissionMode, type PermissionMode } from "./tools/policy.ts";
 import { installPermissionHooks, PermissionGate } from "./hooks.ts";
-import type { ViewApproval } from "../../protocol/src/view.ts";
+import { PackageHost } from "./extensions/index.ts";
+import type { ViewApproval, ViewPackageStatus } from "../../protocol/src/view.ts";
 
 export interface BootOptions {
 	cwd: string;
@@ -102,6 +103,7 @@ export interface BootedHarness {
 		maxTokens?: number;
 	}): Promise<void>;
 	setProviderKey(provider: string, apiKey: string): Promise<void>;
+	packageStatus(): ViewPackageStatus;
 	isRunning(): Promise<boolean>;
 }
 
@@ -127,6 +129,7 @@ export class Operator implements BootedHarness {
 		private readonly originals: Map<string, Provider>,
 		private readonly permissions: PermissionGate,
 		readonly profile: AgentProfile,
+		private readonly packages: PackageHost,
 		bound: {
 			session: Session<JsonlSessionMetadata>;
 			harness: AgentHarness;
@@ -166,12 +169,14 @@ export class Operator implements BootedHarness {
 		const interactive = options.interactiveApprovals === true;
 		const stored = interactive ? await readPermissionMode(options.sessionsRoot, cwd) : undefined;
 		const mode = options.permissionMode ?? stored ?? (interactive ? profile.permissionDefault : "allow");
+		const packages = new PackageHost();
+		await packages.load({ cwd, agentDir: configured.paths.dir, models: configured.models });
 		const gate = new PermissionGate(
 			options.sessionsRoot,
 			cwd,
 			interactive,
 			mode,
-			() => profile.tools().map((tool) => tool.name),
+			() => [...profile.tools(), ...packages.tools()].map((tool) => tool.name),
 			profile.permissionDefault,
 		);
 		const bound = await Operator.bindSession(
@@ -184,6 +189,7 @@ export class Operator implements BootedHarness {
 			session,
 			gate,
 			profile,
+			packages,
 		);
 		const operator = new Operator(
 			context,
@@ -199,6 +205,7 @@ export class Operator implements BootedHarness {
 			configured.originals,
 			gate,
 			profile,
+			packages,
 			bound,
 		);
 		await operator.ensureTitle();
@@ -215,6 +222,7 @@ export class Operator implements BootedHarness {
 		session: Session<JsonlSessionMetadata>,
 		permissions: PermissionGate,
 		profile: AgentProfile,
+		packages: PackageHost,
 	): Promise<{
 		session: Session<JsonlSessionMetadata>;
 		harness: AgentHarness;
@@ -230,14 +238,15 @@ export class Operator implements BootedHarness {
 				models,
 				model: catalogModel,
 				thinkingLevel,
-				tools: profile.tools(),
+				tools: [...profile.tools(), ...packages.tools()],
 				toolContext: { env: executionEnv },
-				systemPrompt: profile.systemPrompt(cwd),
+				systemPrompt: () => profile.systemPrompt(executionEnv.cwd, packages.skills()),
 				compaction: compactionSettings,
 			},
 			context,
 		);
 		installPermissionHooks(harness, permissions);
+		packages.installHooks(harness);
 		const lane = await harness.lane("main", context);
 		await permissions.applyTools(lane, context);
 		const live = await lane.getModel(context);
@@ -346,6 +355,10 @@ export class Operator implements BootedHarness {
 		const name = titleFromPrompt(text);
 		if (!name) return;
 		await this.setSessionTitle(id, name);
+	}
+
+	packageStatus(): ViewPackageStatus {
+		return this.packages.view();
 	}
 
 	async isRunning(): Promise<boolean> {
@@ -549,6 +562,7 @@ export class Operator implements BootedHarness {
 		try {
 			const session = await open();
 			this.applyCwd(session.metadata.cwd);
+			await this.packages.load({ cwd: this.cwd, agentDir: this.paths.dir, models: this.models });
 			const bound = await Operator.bindSession(
 				this.context,
 				this.cwd,
@@ -559,6 +573,7 @@ export class Operator implements BootedHarness {
 				session,
 				this.permissions,
 				this.profile,
+				this.packages,
 			);
 			this.session = bound.session;
 			this.harness = bound.harness;
@@ -571,6 +586,7 @@ export class Operator implements BootedHarness {
 			await this.rememberProject();
 		} catch (error) {
 			this.applyCwd(previous.cwd);
+			await this.packages.load({ cwd: this.cwd, agentDir: this.paths.dir, models: this.models });
 			const fallback = await this.repo.open(previous, this.context);
 			const bound = await Operator.bindSession(
 				this.context,
@@ -582,6 +598,7 @@ export class Operator implements BootedHarness {
 				fallback,
 				this.permissions,
 				this.profile,
+				this.packages,
 			);
 			this.session = bound.session;
 			this.harness = bound.harness;
@@ -671,6 +688,7 @@ export class Operator implements BootedHarness {
 
 	async close(): Promise<void> {
 		this.permissions.rejectAll("Closed");
+		this.packages.unload();
 		await this.harness.close(this.context).catch(() => {});
 		await this.repo.close(this.context).catch(() => {});
 		await this.executionEnv.cleanup(this.context).catch(() => {});

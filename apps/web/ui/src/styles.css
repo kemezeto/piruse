@@ -328,13 +328,20 @@ textarea {
 
 .workspace-head {
 	display: flex;
-	align-items: center;
+	align-items: baseline;
 	justify-content: space-between;
 	gap: 1rem;
 	padding: 1.35rem 2.25rem 0.35rem;
 	border-bottom: 0;
 	background: transparent;
 	flex: none;
+}
+
+.workspace-packages {
+	margin: 0;
+	color: var(--muted);
+	font-size: 0.75rem;
+	white-space: nowrap;
 }
 
 .workspace-title {

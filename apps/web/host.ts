@@ -97,6 +97,7 @@ async function loadMeta(current: Operator): Promise<ViewMeta> {
 		archivedSessions,
 		permissionMode: current.permissionMode(),
 		pendingApprovals: current.pendingApprovals(),
+		packages: current.packageStatus(),
 	};
 }
 

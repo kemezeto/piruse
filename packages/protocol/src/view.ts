@@ -54,6 +54,13 @@ export interface ViewApproval {
 	reason: ApprovalReason;
 }
 
+export interface ViewPackageStatus {
+	skills: string[];
+	extensions: string[];
+	diagnostics: { level: "error" | "warning"; message: string }[];
+	unsupported: string[];
+}
+
 export interface ViewState {
 	sessionId: string;
 	sessionTitle: string;
@@ -68,6 +75,7 @@ export interface ViewState {
 	archivedSessions: ViewArchivedSession[];
 	permissionMode: PermissionMode;
 	pendingApprovals: ViewApproval[];
+	packages: ViewPackageStatus;
 	running: boolean;
 	items: ViewItem[];
 }
@@ -91,4 +99,5 @@ export interface ViewMeta {
 	archivedSessions: ViewArchivedSession[];
 	permissionMode: PermissionMode;
 	pendingApprovals: ViewApproval[];
+	packages: ViewPackageStatus;
 }

@@ -11,6 +11,7 @@
 		"@earendil-works/pi-agent-core": "0.85.1",
 		"@earendil-works/pi-ai": "0.85.1",
 		"@vitejs/plugin-react": "^5.1.2",
+		"jiti": "^2.7.0",
 		"react": "^19.2.4",
 		"react-dom": "^19.2.4",
 		"react-markdown": "^10.1.0",

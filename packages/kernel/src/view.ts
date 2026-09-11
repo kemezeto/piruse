@@ -52,6 +52,7 @@ export function projectView(meta: ViewMeta, lane: LaneSnapshot): ViewState {
 		archivedSessions: meta.archivedSessions,
 		permissionMode: meta.permissionMode,
 		pendingApprovals: meta.pendingApprovals,
+		packages: meta.packages ?? { skills: [], extensions: [], diagnostics: [], unsupported: [] },
 		running: lane.operation !== null,
 		items,
 	};

@@ -10,6 +10,7 @@ export type {
 	ViewSessionOption,
 	ViewArchivedSession,
 	ViewState,
+	ViewPackageStatus,
 	PermissionMode,
 	ApprovalReason,
 } from "./view.ts";
