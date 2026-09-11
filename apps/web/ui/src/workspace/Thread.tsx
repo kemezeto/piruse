@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Markdown from "react-markdown";
 import { ChevronRightIcon } from "tdesign-icons-react";
 import type { ViewItem } from "@protocol/view";
+import logo from "../view/logo.png";
 
 export function Thread({ items }: { items: ViewItem[] }) {
 	return (
@@ -27,9 +28,7 @@ function Item({ item }: { item: ViewItem }) {
 		return (
 			<div className="turn assistant">
 				<div className="assistant-head">
-					<span className="assistant-avatar" aria-hidden="true">
-						π
-					</span>
+					<img className="assistant-avatar" src={logo} alt="" />
 					<div className="assistant-who">
 						<div className="assistant-name">piruse</div>
 						{item.streaming ? <div className="assistant-status">正在回复…</div> : null}

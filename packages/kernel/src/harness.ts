@@ -295,7 +295,7 @@ export class Operator implements BootedHarness {
 
 	async listProjects(): Promise<ViewProjectOption[]> {
 		const listed = await this.liveSessions();
-		listed.sort((left, right) => right.modifiedAt - left.modifiedAt);
+		listed.sort((left, right) => right.createdAt - left.createdAt);
 		const titles = await this.titlesFor(listed);
 		const currentName = await this.sessionTitle();
 		const currentId = this.session.metadata.id;

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { ChatBubbleHelpIcon, ChevronRightIcon, FolderAddIcon, FolderIcon, MenuFoldIcon, MenuUnfoldIcon, SettingIcon } from "tdesign-icons-react";
+import { ChatBubbleHelpIcon, ChevronRightIcon, FolderAddIcon, FolderIcon, FolderOpen1Icon, MenuFoldIcon, MenuUnfoldIcon, SettingIcon } from "tdesign-icons-react";
 import type { ViewProjectOption, ViewSessionOption } from "@protocol/view";
 import { ConfirmDialog } from "../dialog/Confirm";
+import logo from "../view/logo.png";
 import { ChatRow } from "./ChatRow";
 
 const COLLAPSED_KEY = "piruse.sidebar.collapsed";
@@ -141,7 +142,7 @@ export function Sidebar({
 										aria-expanded={open}
 										onClick={() => toggleProject(project.cwd, project.sessionCount)}
 									>
-										<FolderIcon size={14} />
+										{open ? <FolderOpen1Icon size={14} /> : <FolderIcon size={14} />}
 										<span>{project.name}</span>
 										<ChevronRightIcon size={14} className={`caret${open ? " open" : ""}`} />
 									</button>
@@ -170,7 +171,7 @@ export function Sidebar({
 				</div>
 			)}
 			<div className="sidebar-foot">
-				{collapsed ? null : <span className="sidebar-mark">π</span>}
+				{collapsed ? null : <img className="sidebar-mark" src={logo} alt="" />}
 				<button type="button" className="sidebar-settings" aria-label="Settings" title="Settings" onClick={onSettings}>
 					<SettingIcon size={16} />
 				</button>

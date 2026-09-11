@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { FolderMoveIcon, PaletteIcon, Robot2Icon } from "tdesign-icons-react";
 import { Dialog } from "tdesign-react";
 import type { ViewArchivedSession, ViewProviderChoice, ViewProviderOption, ViewSessionOption } from "@protocol/view";
 import type { HostCommand } from "../socket";
@@ -6,6 +7,12 @@ import { ArchivePane } from "./ArchivePane";
 import { ModelsPane } from "./ModelsPane";
 
 type Pane = "appearance" | "models" | "archive";
+
+const NAV: { id: Pane; label: string; icon: typeof PaletteIcon }[] = [
+	{ id: "appearance", label: "外观", icon: PaletteIcon },
+	{ id: "models", label: "模型", icon: Robot2Icon },
+	{ id: "archive", label: "存档", icon: FolderMoveIcon },
+];
 
 export function SettingsDialog({
 	open,
@@ -35,7 +42,7 @@ export function SettingsDialog({
 			visible={open}
 			header="设置"
 			footer={false}
-			width="52rem"
+			width="56rem"
 			placement="center"
 			destroyOnClose
 			dialogClassName="settings-dialog"
@@ -43,19 +50,34 @@ export function SettingsDialog({
 		>
 			<div className="dialog-body">
 				<nav className="dialog-nav" aria-label="设置">
-					<button type="button" className={pane === "appearance" ? "active" : ""} onClick={() => setPane("appearance")}>
-						外观
-					</button>
-					<button type="button" className={pane === "models" ? "active" : ""} onClick={() => setPane("models")}>
-						模型
-					</button>
-					<button type="button" className={pane === "archive" ? "active" : ""} onClick={() => setPane("archive")}>
-						存档
-					</button>
+					{NAV.map((item) => {
+						const Icon = item.icon;
+						return (
+							<button
+								key={item.id}
+								type="button"
+								className={pane === item.id ? "active" : ""}
+								aria-current={pane === item.id ? "page" : undefined}
+								onClick={() => setPane(item.id)}
+							>
+								<Icon size="18px" />
+								{item.label}
+							</button>
+						);
+					})}
 				</nav>
 				<div className="dialog-pane">
 					{pane === "appearance" ? (
-						<p className="dialog-placeholder">外观设置稍后提供。</p>
+						<div className="settings-page">
+							<div className="settings-page-head">
+								<h2 className="settings-page-title">外观</h2>
+							</div>
+							<section className="settings-block">
+								<div className="settings-card">
+									<p className="dialog-placeholder">外观设置稍后提供。</p>
+								</div>
+							</section>
+						</div>
 					) : pane === "archive" ? (
 						<ArchivePane
 							sessions={sessions}

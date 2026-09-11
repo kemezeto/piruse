@@ -76,7 +76,7 @@ export function projectsFromSessions(sessions: JsonlSessionMetadata[], currentCw
 			sessions: [],
 		});
 	}
-	return [...byCwd.values()].sort((left, right) => right.modifiedAt - left.modifiedAt).slice(0, 40);
+	return [...byCwd.values()].sort((left, right) => left.name.localeCompare(right.name) || left.cwd.localeCompare(right.cwd)).slice(0, 40);
 }
 
 export async function resolveProjectDirectory(env: NodeExecutionEnv, cwdInput: string, context: Context): Promise<string> {
