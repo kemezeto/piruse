@@ -32,7 +32,7 @@ export function PackagesPane({
 						<p className="dialog-placeholder">{empty}</p>
 					</div>
 				) : (
-					<div className="settings-stack">
+					<div className="package-grid">
 						{items.map((item) => (
 							<div key={item.id} className={`settings-card package-card${item.enabled ? "" : " is-disabled"}`}>
 								<div className="package-card-head">
@@ -43,9 +43,12 @@ export function PackagesPane({
 											{item.source}
 										</p>
 									</div>
-									<span title={running ? "请先停止当前运行" : item.enabled ? "已启用" : "已禁用"}>
+									<span
+										className="package-card-toggle"
+										title={running ? "请先停止当前运行" : item.enabled ? "已启用" : "已禁用"}
+									>
 										<Switch
-											size="small"
+											size="large"
 											value={item.enabled}
 											disabled={running}
 											label={["启用", "禁用"]}

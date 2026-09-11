@@ -2,7 +2,7 @@ import * as piAgentCore from "@earendil-works/pi-agent-core";
 import * as piAiCompat from "@earendil-works/pi-ai/compat";
 import * as piAiOauth from "@earendil-works/pi-ai/oauth";
 import * as piAiProviders from "@earendil-works/pi-ai/providers/all";
-import { createJiti } from "jiti";
+import { createJiti } from "jiti/static";
 import * as typebox from "typebox";
 import * as typeboxCompile from "typebox/compile";
 import * as typeboxValue from "typebox/value";
@@ -13,18 +13,31 @@ const codingAgentShim = {
 	defineTool,
 };
 
-const tuiStub = new Proxy(
-	{ __esModule: true },
-	{
-		get: (_target, prop) => {
-			if (prop === "__esModule") return true;
-			if (prop === "default") return tuiStub;
-			return function tuiUnavailable() {
-				return undefined;
-			};
-		},
-	},
-);
+class TuiNode {
+	addChild(_child: unknown): void {}
+}
+
+class Box extends TuiNode {
+	constructor(..._args: unknown[]) {
+		super();
+	}
+}
+
+class Text extends TuiNode {
+	constructor(..._args: unknown[]) {
+		super();
+	}
+}
+
+function truncateToWidth(text: string, _width?: number): string {
+	return text;
+}
+
+const tuiStub = {
+	Box,
+	Text,
+	truncateToWidth,
+};
 
 const VIRTUAL_MODULES: Record<string, unknown> = {
 	typebox,
@@ -52,12 +65,33 @@ const VIRTUAL_MODULES: Record<string, unknown> = {
 export async function importExtensionFactory(extensionPath: string): Promise<ExtensionFactory> {
 	const jiti = createJiti(import.meta.url, {
 		moduleCache: false,
+		tryNative: false,
 		virtualModules: VIRTUAL_MODULES,
 	});
-	const module = await jiti.import(extensionPath, { default: true });
+	const module = await withTimeout(
+		jiti.import(extensionPath, { default: true }),
+		20_000,
+		`Extension import timed out: ${extensionPath}`,
+	);
 	if (typeof module === "function") return module as ExtensionFactory;
 	if (module && typeof module === "object" && "default" in module && typeof module.default === "function") {
 		return module.default as ExtensionFactory;
 	}
 	throw new Error(`Extension does not export a factory function: ${extensionPath}`);
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+	return new Promise((resolve, reject) => {
+		const timer = setTimeout(() => reject(new Error(message)), ms);
+		promise.then(
+			(value) => {
+				clearTimeout(timer);
+				resolve(value);
+			},
+			(error) => {
+				clearTimeout(timer);
+				reject(error);
+			},
+		);
+	});
 }
