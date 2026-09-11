@@ -14,10 +14,18 @@ Agent 本体是 `packages/kernel`。Web / CLI 是调用方。模型目录和密�
 
 ![4](picture/4.jpg)
 
+## 要不要装 pi
+
+**不用。** 跑 piruse 不需要安装 [pi](https://github.com/badlogic/pi-mono) CLI，也不依赖 `@earendil-works/pi-coding-agent`。`npm install` 之后直接 `npm run web` / `npm start` 即可。
+
+密钥、settings、已装扩展和技能读的是同一份 `~/.pi/agent`。你以前用过 pi，这些会直接生效；没用过也可以，自己写 `auth.json` 或设环境变量。
+
+只有要装 / 卸扩展和技能时，才需要官方 `pi install` / `pi uninstall`。piruse 不做安装，只发现和启用。
+
 ## 要求
 
 - Node.js ≥ 22.19
-- 在 `~/.pi/agent/auth.json` 配好至少一个模型密钥（和 `pi` 同一份文件），或设置对应 provider 的环境变量
+- 至少一个模型密钥：写在 `~/.pi/agent/auth.json`，或设置对应 provider 的环境变量
 
 ```bash
 npm install
