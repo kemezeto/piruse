@@ -11,6 +11,7 @@ export function App() {
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [collapsed, setCollapsed] = useState(readSidebarCollapsed);
 	const [agent, setAgent] = useState(readAgentKind);
+	const [inspectNonce, setInspectNonce] = useState(0);
 
 	const selectAgent = (next: AgentKind): void => {
 		setAgent(next);
@@ -47,18 +48,29 @@ export function App() {
 					useCoding();
 					sendCommand({ type: "pickProject" });
 				}}
-				onOpenSession={(sessionId) => {
+				onOpenSession={(id) => {
+					if (agent === "analyse") {
+						setInspectNonce((value) => value + 1);
+						if (id !== state?.sessionId) sendCommand({ type: "openSession", sessionId: id });
+						return;
+					}
 					useCoding();
-					sendCommand({ type: "openSession", sessionId });
+					sendCommand({ type: "openSession", sessionId: id });
 				}}
 				onArchive={(sessionId) => sendCommand({ type: "archiveSession", sessionId })}
 				onSettings={() => setSettingsOpen(true)}
 			/>
 			{agent === "analyse" ? (
 				<AnalyseWorkspace
+					sessionId={state?.sessionId ?? ""}
+					sessionTitle={state?.sessionTitle ?? ""}
+					cwd={state?.cwd ?? ""}
+					items={state?.items ?? []}
 					projects={state?.projects ?? []}
 					models={state?.models ?? []}
 					skills={state?.packages?.skills ?? []}
+					inspectNonce={inspectNonce}
+					onOpenInCoding={useCoding}
 				/>
 			) : (
 				<Workspace state={state} notice={notice} line={line} onCommand={sendCommand} onSend={sendPrompt} />

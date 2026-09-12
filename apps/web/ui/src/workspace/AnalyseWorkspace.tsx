@@ -1,6 +1,7 @@
-import { useState } from "react";
-import type { ViewModelOption, ViewPackageItem, ViewProjectOption } from "@protocol/view";
+import { useEffect, useState } from "react";
+import type { ViewItem, ViewModelOption, ViewPackageItem, ViewProjectOption } from "@protocol/view";
 import { Overview } from "../analyse/Overview";
+import { SessionInspect } from "../analyse/SessionInspect";
 import { Usage } from "../analyse/Usage";
 import { Activity } from "../analyse/Activity";
 import { Quality } from "../analyse/Quality";
@@ -38,16 +39,34 @@ function writeAnalyseTab(id: AnalyseTabId): void {
 }
 
 export function AnalyseWorkspace({
+	sessionId,
+	sessionTitle,
+	cwd,
+	items,
 	projects,
 	models,
 	skills,
+	inspectNonce,
+	onOpenInCoding,
 }: {
+	sessionId: string;
+	sessionTitle: string;
+	cwd: string;
+	items: ViewItem[];
 	projects: ViewProjectOption[];
 	models: ViewModelOption[];
 	skills: ViewPackageItem[];
+	inspectNonce: number;
+	onOpenInCoding: () => void;
 }) {
 	const [tab, setTab] = useState(readAnalyseTab);
 	const current = TABS.find((item) => item.id === tab) ?? TABS[0];
+
+	useEffect(() => {
+		if (!inspectNonce) return;
+		setTab("sessions");
+		writeAnalyseTab("sessions");
+	}, [inspectNonce]);
 
 	return (
 		<main className="workspace analyse-workspace" aria-label="Analyse Agent">
@@ -75,11 +94,22 @@ export function AnalyseWorkspace({
 				</nav>
 			</header>
 			<section
-				className="analyse-pane"
+				className={`analyse-pane${current.id === "sessions" ? " is-session" : ""}`}
 				role="tabpanel"
 				aria-labelledby={`analyse-tab-${current.id}`}
 			>
 				{current.id === "overview" ? <Overview projects={projects} models={models} skills={skills} /> : null}
+				{current.id === "sessions" ? (
+					<SessionInspect
+						key={sessionId}
+						sessionId={sessionId}
+						sessionTitle={sessionTitle}
+						cwd={cwd}
+						items={items}
+						projects={projects}
+						onOpenInCoding={onOpenInCoding}
+					/>
+				) : null}
 				{current.id === "usage" ? <Usage projects={projects} models={models} /> : null}
 				{current.id === "activity" ? <Activity projects={projects} models={models} /> : null}
 				{current.id === "quality" ? <Quality projects={projects} /> : null}

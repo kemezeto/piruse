@@ -3,7 +3,7 @@ import type { ViewItem } from "../../protocol/src/view.ts";
 
 export function itemsFromMessage(id: string, message: AgentMessage, streaming = false): ViewItem[] {
 	if (message.role === "user") {
-		return [{ id, kind: "user", text: userText(message.content) }];
+		return [{ id, kind: "user", text: userText(message.content), at: message.timestamp }];
 	}
 	if (message.role === "assistant") {
 		const items: ViewItem[] = [];
@@ -11,7 +11,16 @@ export function itemsFromMessage(id: string, message: AgentMessage, streaming = 
 			.filter((block) => block.type === "text")
 			.map((block) => block.text)
 			.join("");
-		if (text || streaming) items.push({ id, kind: "assistant", text, streaming });
+		if (text || streaming) {
+			items.push({
+				id,
+				kind: "assistant",
+				text,
+				streaming,
+				at: message.timestamp,
+				tokens: message.usage?.totalTokens,
+			});
+		}
 		return items;
 	}
 	if (message.role === "toolResult") {
@@ -24,6 +33,7 @@ export function itemsFromMessage(id: string, message: AgentMessage, streaming = 
 				result: textOfContent(message.content),
 				running: false,
 				isError: message.isError,
+				at: message.timestamp,
 			},
 		];
 	}

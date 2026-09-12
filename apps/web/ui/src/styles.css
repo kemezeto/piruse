@@ -447,6 +447,12 @@ textarea {
 	scrollbar-width: thin;
 }
 
+.analyse-pane.is-session {
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
 .ov {
 	display: flex;
 	flex-direction: column;
@@ -3062,4 +3068,526 @@ textarea {
 	border: 1px solid var(--line);
 	border-radius: 0.9rem;
 	box-shadow: var(--shadow);
+}
+
+.sess {
+	min-height: 0;
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	background: color-mix(in srgb, var(--ink) 2.5%, var(--bg));
+}
+
+.sess-empty,
+.sess-blank {
+	margin: auto;
+	padding: 3rem 1.5rem;
+	color: var(--muted);
+	text-align: center;
+}
+
+.sess-head {
+	flex: none;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.8rem;
+	padding: 0.15rem 1.15rem 0.7rem;
+	min-width: 0;
+}
+
+.sess-head-start,
+.sess-head-end {
+	display: flex;
+	align-items: center;
+	gap: 0.45rem;
+	min-width: 0;
+}
+
+.sess-head-start {
+	flex: 1;
+}
+
+.sess-kicker {
+	flex: none;
+	color: var(--muted);
+	font-size: 0.92rem;
+}
+
+.sess-head h1 {
+	margin: 0;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 0.98rem;
+	font-weight: 650;
+}
+
+.sess-head time,
+.sess-head em,
+.sess-hash {
+	flex: none;
+	color: var(--muted);
+	font-size: 0.8rem;
+	font-style: normal;
+	font-weight: 500;
+}
+
+.sess-open,
+.sess-hash,
+.sess-icon {
+	border: 1px solid var(--line);
+	background: var(--surface);
+	color: var(--ink);
+	border-radius: 0.45rem;
+	cursor: pointer;
+}
+
+.sess-open {
+	padding: 0.12rem 0.55rem;
+	font-size: 0.78rem;
+	font-weight: 600;
+}
+
+.sess-hash {
+	padding: 0.12rem 0.45rem;
+	font-family: "Source Code Pro", ui-monospace, monospace;
+	font-size: 0.75rem;
+}
+
+.sess-icon {
+	width: 1.75rem;
+	height: 1.75rem;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	color: var(--muted);
+}
+
+.sess-open:hover,
+.sess-hash:hover,
+.sess-icon:hover,
+.sess-icon[aria-pressed="true"] {
+	background: var(--chip);
+	color: var(--ink);
+}
+
+.sess-search {
+	width: 12rem;
+	border: 1px solid var(--line);
+	background: var(--surface);
+	border-radius: 0.45rem;
+	padding: 0.22rem 0.55rem;
+	font-size: 0.8rem;
+}
+
+.sess-body {
+	min-height: 0;
+	flex: 1;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 22rem;
+}
+
+.sess.no-panel .sess-body {
+	grid-template-columns: minmax(0, 1fr);
+}
+
+.sess-thread,
+.sess-panel {
+	min-height: 0;
+	overflow: auto;
+	scrollbar-width: thin;
+}
+
+.sess-thread {
+	display: flex;
+	flex-direction: column;
+	gap: 0.7rem;
+	padding: 0 1.15rem 1.4rem;
+}
+
+.sess-card {
+	background: var(--surface);
+	border: 1px solid color-mix(in srgb, var(--ink) 8%, var(--line));
+	border-radius: 0.75rem;
+	padding: 0.7rem 0.9rem 0.8rem;
+	box-shadow: 0 1px 2px rgba(15, 18, 22, 0.04);
+}
+
+.sess-card header,
+.sess-tools-toggle {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.6rem;
+	margin: 0;
+	color: var(--muted);
+	font-size: 0.78rem;
+}
+
+.sess-who {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	color: var(--ink);
+}
+
+.sess-who i {
+	width: 1.2rem;
+	height: 1.2rem;
+	border-radius: 999px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	color: #fff;
+	font-size: 0.68rem;
+	font-style: normal;
+	font-weight: 700;
+}
+
+.sess-who b {
+	font-size: 0.82rem;
+	font-weight: 650;
+}
+
+.sess-user {
+	border-left: 3px solid #3b82f6;
+}
+
+.sess-user .sess-who i {
+	background: #3b82f6;
+}
+
+.sess-assistant {
+	border-left: 3px solid #8b5cf6;
+}
+
+.sess-assistant .sess-who i {
+	background: #8b5cf6;
+}
+
+.sess-tools {
+	border-left: 3px solid #f59e0b;
+}
+
+.sess-card p {
+	margin: 0.55rem 0 0;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.sess-card .md {
+	margin-top: 0.45rem;
+	word-break: break-word;
+}
+
+.sess-card .md p {
+	margin: 0 0 0.55rem;
+}
+
+.sess-card .md p:last-child {
+	margin-bottom: 0;
+}
+
+.sess-note {
+	margin: 0;
+	color: var(--muted);
+	font-size: 0.8rem;
+}
+
+.sess-tools-toggle {
+	width: 100%;
+	border: 0;
+	background: transparent;
+	padding: 0;
+	cursor: pointer;
+	text-align: left;
+}
+
+.sess-tools-toggle .caret {
+	margin-left: 0.15rem;
+	transition: transform 0.12s ease;
+}
+
+.sess-tools-toggle .caret.open {
+	transform: rotate(90deg);
+}
+
+.sess-tool-list {
+	list-style: none;
+	margin: 0.45rem 0 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.18rem;
+}
+
+.sess-tool-list li {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: 0.7rem;
+	align-items: baseline;
+	font-size: 0.8rem;
+}
+
+.sess-tool-list code {
+	color: #c2410c;
+	font-family: "Source Code Pro", ui-monospace, monospace;
+	font-size: 0.78rem;
+}
+
+.sess-tool-list span {
+	margin-left: 0.45rem;
+	color: var(--muted);
+	word-break: break-all;
+}
+
+.sess-tool-list em {
+	flex: none;
+	color: var(--muted);
+	font-style: normal;
+	font-variant-numeric: tabular-nums;
+}
+
+.sess-panel {
+	border-left: 1px solid var(--line);
+	background: var(--surface);
+	padding: 0.7rem 0.95rem 1.3rem;
+}
+
+.sess-panel-head {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 0.4rem;
+	margin-bottom: 0.7rem;
+}
+
+.sess-panel-head strong {
+	display: block;
+	font-size: 0.92rem;
+}
+
+.sess-panel-head span,
+.sess-block > span,
+.sess-block-head span,
+.sess-block-row span,
+.sess-stats dt,
+.sess-pair span,
+.sess-last span {
+	color: var(--muted);
+	font-size: 0.72rem;
+	letter-spacing: 0.02em;
+}
+
+.sess-stats {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 0.55rem 0.7rem;
+	margin: 0 0 0.85rem;
+}
+
+.sess-stats .wide {
+	grid-column: 1 / -1;
+}
+
+.sess-stats dt {
+	margin-bottom: 0.12rem;
+}
+
+.sess-stats dd {
+	margin: 0;
+	font-size: 0.82rem;
+	font-weight: 600;
+	word-break: break-all;
+}
+
+.sess-pair,
+.sess-last,
+.sess-block {
+	border-top: 1px solid var(--line);
+	padding-top: 0.7rem;
+	margin-top: 0.7rem;
+}
+
+.sess-pair {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 0.6rem;
+}
+
+.sess-pair strong,
+.sess-block strong,
+.sess-last b {
+	display: block;
+	font-size: 1.05rem;
+	font-weight: 700;
+}
+
+.sess-last p,
+.sess-block p {
+	display: flex;
+	align-items: baseline;
+	gap: 0.4rem;
+	margin: 0.25rem 0 0;
+	color: var(--muted);
+	font-size: 0.78rem;
+}
+
+.sess-last code {
+	color: #c2410c;
+	font-family: "Source Code Pro", ui-monospace, monospace;
+	font-size: 0.78rem;
+}
+
+.sess-last em {
+	color: var(--muted);
+	font-style: normal;
+}
+
+.sess-last b {
+	margin-left: auto;
+	font-size: 0.9rem;
+}
+
+.sess-block-head,
+.sess-block-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.4rem;
+}
+
+.sess-toggle {
+	display: inline-flex;
+	gap: 0.15rem;
+}
+
+.sess-toggle button {
+	border: 0;
+	background: transparent;
+	color: var(--muted);
+	border-radius: 0.35rem;
+	padding: 0.08rem 0.35rem;
+	cursor: pointer;
+	font-size: 0.7rem;
+}
+
+.sess-toggle button.active,
+.sess-toggle button:hover {
+	background: var(--chip);
+	color: var(--ink);
+}
+
+.sess-lanes,
+.sess-chain {
+	margin-top: 0.45rem;
+}
+
+.sess-lane {
+	display: grid;
+	grid-template-columns: 2.6rem minmax(0, 1fr) auto;
+	gap: 0.4rem;
+	align-items: center;
+	margin-top: 0.28rem;
+	font-size: 0.7rem;
+	color: var(--muted);
+}
+
+.sess-lane-track,
+.sess-chain-track,
+.sess-chain-bars {
+	position: relative;
+	height: 0.7rem;
+	background: color-mix(in srgb, var(--ink) 6%, var(--bg));
+	border-radius: 0.2rem;
+	overflow: hidden;
+}
+
+.sess-lane-track i,
+.sess-chain-track i {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	border-radius: 0.12rem;
+}
+
+.sess-lane-track i.other,
+.sess-chain-track i.other {
+	background: #94a3b8;
+}
+
+.sess-lane-track i.tool,
+.sess-chain-track i.tool {
+	background: #8b5cf6;
+}
+
+.sess-chain-bars {
+	display: flex;
+	align-items: flex-end;
+	gap: 0.12rem;
+	height: 2.4rem;
+	background: transparent;
+	overflow: hidden;
+}
+
+.sess-chain-bars i {
+	flex: 1;
+	min-width: 0;
+	background: #3b82f6;
+	border-radius: 0.12rem 0.12rem 0 0;
+}
+
+.sess-calls {
+	list-style: none;
+	margin: 0.45rem 0 0;
+	padding: 0;
+	max-height: 18rem;
+	overflow: auto;
+	scrollbar-width: thin;
+}
+
+.sess-calls li {
+	display: grid;
+	grid-template-columns: 7.2rem minmax(0, 1fr) 3.4rem;
+	gap: 0.4rem;
+	align-items: center;
+	margin-top: 0.22rem;
+	font-size: 0.72rem;
+}
+
+.sess-calls code {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: #c2410c;
+	font-family: "Source Code Pro", ui-monospace, monospace;
+}
+
+.sess-calls i {
+	display: block;
+	height: 0.45rem;
+	background: #8b5cf6;
+	border-radius: 0.12rem;
+}
+
+.sess-calls em {
+	color: var(--muted);
+	font-style: normal;
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 1100px) {
+	.sess-body {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.sess-panel {
+		border-left: 0;
+		border-top: 1px solid var(--line);
+		max-height: 40vh;
+	}
 }

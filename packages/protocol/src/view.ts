@@ -90,10 +90,20 @@ export interface ViewState {
 }
 
 export type ViewItem =
-	| { id: string; kind: "user"; text: string }
-	| { id: string; kind: "assistant"; text: string; streaming?: boolean }
-	| { id: string; kind: "tool"; name: string; args: string; result?: string; running: boolean; isError?: boolean }
-	| { id: string; kind: "note"; text: string };
+	| { id: string; kind: "user"; text: string; at?: number }
+	| { id: string; kind: "assistant"; text: string; streaming?: boolean; at?: number; tokens?: number }
+	| {
+			id: string;
+			kind: "tool";
+			name: string;
+			args: string;
+			result?: string;
+			running: boolean;
+			isError?: boolean;
+			at?: number;
+			durationMs?: number;
+	  }
+	| { id: string; kind: "note"; text: string; at?: number };
 
 export interface ViewMeta {
 	sessionId: string;

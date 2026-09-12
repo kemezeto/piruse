@@ -7,14 +7,34 @@ export type { ViewItem, ViewMeta, ViewState } from "../../protocol/src/view.ts";
 
 export function projectView(meta: ViewMeta, lane: LaneSnapshot): ViewState {
 	const items: ViewItem[] = [];
+	const starts = new Map<string, { args: string; at: number }>();
+
 	for (const entry of lane.transcript) {
 		const windowItems = itemsFromWindowEntry(entry);
 		if (windowItems) {
-			items.push(...windowItems);
+			items.push(...windowItems.map((item) => ({ ...item, at: entry.timestamp })));
 			continue;
 		}
 		if (entry.type !== "message") continue;
-		items.push(...itemsFromMessage(entry.id, entry.message));
+		const message = entry.message;
+		if (message.role === "assistant") {
+			for (const block of message.content) {
+				if (block.type !== "toolCall") continue;
+				starts.set(block.id, { args: formatArgs(block.arguments), at: message.timestamp });
+			}
+		}
+		for (const item of itemsFromMessage(entry.id, message)) {
+			if (item.kind === "tool" && message.role === "toolResult") {
+				const start = starts.get(message.toolCallId);
+				items.push({
+					...item,
+					args: start?.args || item.args,
+					durationMs: start ? Math.max(0, message.timestamp - start.at) : undefined,
+				});
+				continue;
+			}
+			items.push(item);
+		}
 	}
 
 	const operation = lane.operation;

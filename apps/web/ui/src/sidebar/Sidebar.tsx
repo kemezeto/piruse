@@ -147,7 +147,7 @@ export function Sidebar({
 													running={running}
 													now={now}
 													onOpen={() => {
-														if (session.id !== sessionId) onOpenSession(session.id);
+														if (agent === "analyse" || session.id !== sessionId) onOpenSession(session.id);
 													}}
 													onArchive={() => setPending(session)}
 												/>
