@@ -444,17 +444,20 @@ textarea {
 	min-height: 0;
 	flex: 1;
 	overflow: auto;
-	scrollbar-width: thin;
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+
+.analyse-pane::-webkit-scrollbar {
+	width: 0;
+	height: 0;
+	display: none;
 }
 
 .analyse-pane.is-session {
 	overflow: hidden;
 	display: flex;
 	flex-direction: column;
-}
-
-.analyse-workspace:has(.is-session) .analyse-head {
-	padding: 0.7rem 1.5rem 0.35rem;
 }
 
 .ov {
