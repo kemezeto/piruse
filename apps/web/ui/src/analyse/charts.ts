@@ -1,6 +1,8 @@
 import type { EChartsCoreOption } from "echarts/core";
 import type { ActivityDay, OverlayMetric } from "./activity";
 import type { ActivityMetric, DayStat, SkillTrendPoint, TimeGrain, WeekPoint } from "./demo";
+import type { QualityDay } from "./quality";
+import { GRADE_COLOR } from "./quality";
 import type { UsageDay, UsageSlice } from "./usage";
 import { seriesFor } from "./demo";
 import { formatMd, formatZhDate, formatZhShort } from "./range";
@@ -576,6 +578,55 @@ export function concurrencyOption(days: ActivityDay[], overlay: OverlayMetric): 
 			},
 		],
 		series,
+	};
+}
+
+export function healthTrendOption(days: QualityDay[]): EChartsCoreOption {
+	return {
+		tooltip: {
+			...tooltipChrome,
+			trigger: "axis",
+			axisPointer: { type: "shadow" },
+			formatter: (params: unknown) => {
+				const point = tooltipPoint(params);
+				const date = String(point?.name ?? "");
+				const value = Number(point?.value ?? 0);
+				if (!date) return "";
+				return `${formatZhDate(date)}<br/>平均分 ${Math.round(value)}`;
+			},
+		},
+		grid: { left: 8, right: 8, top: 12, bottom: 22, containLabel: true },
+		xAxis: {
+			type: "category",
+			data: days.map((item) => item.date),
+			axisTick: { show: false },
+			axisLine: { show: false },
+			axisLabel: {
+				color: "#8a8a86",
+				fontSize: 11,
+				showMinLabel: true,
+				showMaxLabel: true,
+				interval: Math.max(days.length - 1, 1),
+			},
+		},
+		yAxis: {
+			type: "value",
+			min: 0,
+			max: 100,
+			interval: 50,
+			splitLine: { lineStyle: { color: "#f0f0ee" } },
+			axisLabel: { color: "#8a8a86", fontSize: 11 },
+		},
+		series: [
+			{
+				type: "bar",
+				barMaxWidth: 7,
+				data: days.map((item) => ({
+					value: Number(item.score.toFixed(1)),
+					itemStyle: { color: GRADE_COLOR[item.grade], borderRadius: [2, 2, 0, 0] },
+				})),
+			},
+		],
 	};
 }
 

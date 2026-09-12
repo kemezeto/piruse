@@ -3,15 +3,14 @@ import type { ViewModelOption, ViewPackageItem, ViewProjectOption } from "@proto
 import { Overview } from "../analyse/Overview";
 import { Usage } from "../analyse/Usage";
 import { Activity } from "../analyse/Activity";
+import { Quality } from "../analyse/Quality";
 
 const TABS = [
 	{ id: "overview", label: "概览" },
 	{ id: "sessions", label: "会话" },
 	{ id: "usage", label: "用量" },
 	{ id: "activity", label: "活动" },
-	{ id: "trends", label: "趋势" },
 	{ id: "quality", label: "质量" },
-	{ id: "recent", label: "最近编辑" },
 	{ id: "data", label: "数据" },
 ] as const;
 
@@ -83,6 +82,7 @@ export function AnalyseWorkspace({
 				{current.id === "overview" ? <Overview projects={projects} models={models} skills={skills} /> : null}
 				{current.id === "usage" ? <Usage projects={projects} models={models} /> : null}
 				{current.id === "activity" ? <Activity projects={projects} models={models} /> : null}
+				{current.id === "quality" ? <Quality projects={projects} /> : null}
 			</section>
 		</main>
 	);
