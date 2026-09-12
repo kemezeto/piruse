@@ -1,11 +1,11 @@
 import { useEffect, useRef } from "react";
 import { init, use } from "echarts/core";
 import { BarChart, HeatmapChart, LineChart, TreemapChart } from "echarts/charts";
-import { CalendarComponent, GridComponent, TooltipComponent, VisualMapComponent } from "echarts/components";
+import { CalendarComponent, GridComponent, MarkAreaComponent, TooltipComponent, VisualMapComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 import type { ECharts, EChartsCoreOption } from "echarts/core";
 
-use([BarChart, HeatmapChart, LineChart, TreemapChart, CalendarComponent, GridComponent, TooltipComponent, VisualMapComponent, CanvasRenderer]);
+use([BarChart, HeatmapChart, LineChart, TreemapChart, CalendarComponent, GridComponent, MarkAreaComponent, TooltipComponent, VisualMapComponent, CanvasRenderer]);
 
 export function EChart({ option, className }: { option: EChartsCoreOption; className?: string }) {
 	const host = useRef<HTMLDivElement>(null);

@@ -1114,6 +1114,10 @@ textarea {
 	grid-template-columns: repeat(9, minmax(0, 1fr));
 }
 
+.use-kpis.act-kpis {
+	grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
 .use-kpi {
 	background: var(--surface);
 	border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
@@ -1270,6 +1274,10 @@ textarea {
 	.use-kpis {
 		grid-template-columns: repeat(5, minmax(0, 1fr));
 	}
+
+	.use-kpis.act-kpis {
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+	}
 }
 
 @media (max-width: 1100px) {
@@ -1290,6 +1298,112 @@ textarea {
 	.use-rank.wide {
 		grid-template-columns: 1fr;
 	}
+}
+
+.act-chart {
+	height: 16.5rem;
+}
+
+.act-legend {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+}
+
+.act-legend span {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	color: var(--muted);
+	font-size: 0.75rem;
+}
+
+.act-legend i {
+	width: 0.5rem;
+	height: 0.5rem;
+	border-radius: 2px;
+}
+
+.act-count {
+	color: var(--muted);
+	font-size: 0.78rem;
+}
+
+.act-table-wrap {
+	overflow-x: auto;
+}
+
+.act-table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.act-table th,
+.act-table td {
+	padding: 0.55rem 0.55rem;
+	border-bottom: 1px solid color-mix(in srgb, var(--ink) 7%, transparent);
+	font-size: 0.8rem;
+	text-align: left;
+	vertical-align: middle;
+	white-space: nowrap;
+}
+
+.act-table th {
+	color: var(--muted);
+	font-weight: 500;
+	font-size: 0.72rem;
+}
+
+.act-table th.num,
+.act-table td.num {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
+.act-table tbody tr:hover {
+	background: color-mix(in srgb, var(--ink) 3%, transparent);
+}
+
+.act-sort {
+	border: 0;
+	background: transparent;
+	color: inherit;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.15rem;
+	padding: 0;
+	cursor: pointer;
+	font: inherit;
+}
+
+.act-sort.active {
+	color: var(--ink);
+	font-weight: 600;
+}
+
+.act-sort .flip {
+	transform: rotate(180deg);
+}
+
+.act-session {
+	border: 0;
+	background: transparent;
+	color: var(--brand);
+	padding: 0;
+	cursor: pointer;
+	font: inherit;
+	font-weight: 500;
+}
+
+.act-session:hover {
+	text-decoration: underline;
+}
+
+.popover-item-label {
+	color: var(--muted);
+	font-size: 0.7rem;
+	padding: 0.2rem 0.45rem 0.35rem;
+	cursor: default;
 }
 
 .workspace-head {

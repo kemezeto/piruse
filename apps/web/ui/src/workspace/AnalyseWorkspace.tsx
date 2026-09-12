@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { ViewModelOption, ViewPackageItem, ViewProjectOption } from "@protocol/view";
 import { Overview } from "../analyse/Overview";
 import { Usage } from "../analyse/Usage";
+import { Activity } from "../analyse/Activity";
 
 const TABS = [
 	{ id: "overview", label: "概览" },
@@ -81,6 +82,7 @@ export function AnalyseWorkspace({
 			>
 				{current.id === "overview" ? <Overview projects={projects} models={models} skills={skills} /> : null}
 				{current.id === "usage" ? <Usage projects={projects} models={models} /> : null}
+				{current.id === "activity" ? <Activity projects={projects} models={models} /> : null}
 			</section>
 		</main>
 	);

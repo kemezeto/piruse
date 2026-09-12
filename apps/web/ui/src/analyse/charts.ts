@@ -1,4 +1,5 @@
 import type { EChartsCoreOption } from "echarts/core";
+import type { ActivityDay, OverlayMetric } from "./activity";
 import type { ActivityMetric, DayStat, SkillTrendPoint, TimeGrain, WeekPoint } from "./demo";
 import type { UsageDay, UsageSlice } from "./usage";
 import { seriesFor } from "./demo";
@@ -471,6 +472,124 @@ export function costTreemapOption(slices: UsageSlice[], kind: UsageValueKind = "
 				})),
 			},
 		],
+	};
+}
+
+export function concurrencyOption(
+	days: ActivityDay[],
+	overlay: OverlayMetric,
+	today: string,
+): EChartsCoreOption {
+	const names = days.map((item) => item.date);
+	const future = days.find((item) => item.date >= today)?.date;
+	const last = days[days.length - 1]?.date;
+	const interval = Math.max(0, Math.floor((Math.max(days.length, 1) - 1) / 3));
+	const overlayName = overlay === "cost" ? "成本" : overlay === "token" ? "Token" : "";
+	const overlayData = days.map((item) =>
+		overlay === "cost" ? Number(item.cost.toFixed(4)) : overlay === "token" ? item.tokens : 0,
+	);
+	const series = [
+		{
+			name: "交互式",
+			type: "bar" as const,
+			stack: "concurrency",
+			barMaxWidth: 14,
+			itemStyle: { color: "#4f7dff" },
+			data: days.map((item) => item.interactive),
+			markArea:
+				future && last && future <= last
+					? {
+							silent: true,
+							itemStyle: { color: "rgba(15, 18, 22, 0.045)" },
+							data: [[{ xAxis: future }, { xAxis: last }]],
+						}
+					: undefined,
+		},
+		{
+			name: "自动化",
+			type: "bar" as const,
+			stack: "concurrency",
+			barMaxWidth: 14,
+			itemStyle: { color: "#fb923c", borderRadius: [2, 2, 0, 0] },
+			data: days.map((item) => item.automation),
+		},
+		...(overlay === "none"
+			? []
+			: [
+					{
+						name: overlayName,
+						type: "line" as const,
+						yAxisIndex: 1,
+						smooth: 0.25,
+						showSymbol: false,
+						lineStyle: { width: 2, color: "#f59e0b" },
+						itemStyle: { color: "#f59e0b" },
+						data: overlayData,
+					},
+				]),
+	];
+	return {
+		tooltip: {
+			...tooltipChrome,
+			trigger: "axis",
+			axisPointer: { type: "shadow" },
+			formatter: (params: unknown) => {
+				const rows = Array.isArray(params) ? params : [params];
+				const date = String((rows[0] as { name?: string } | undefined)?.name ?? "");
+				if (!date) return "";
+				const lines = rows
+					.map((row) => {
+						const item = row as { seriesName?: string; value?: number; marker?: string };
+						if (!item.seriesName || item.value == null) return "";
+						const value =
+							item.seriesName === "成本"
+								? formatUsd(Number(item.value))
+								: item.seriesName === "Token"
+									? formatCompactToken(Number(item.value))
+									: String(Math.round(Number(item.value)));
+						return `${item.marker ?? ""}${item.seriesName}: ${value}`;
+					})
+					.filter(Boolean);
+				return [`${formatZhDate(date)}`, ...lines].join("<br/>");
+			},
+		},
+		legend: { show: false },
+		grid: { left: 8, right: overlay === "none" ? 12 : 18, top: 22, bottom: 8, containLabel: true },
+		xAxis: {
+			type: "category",
+			data: names,
+			axisTick: { show: false },
+			axisLine: { lineStyle: { color: "#e5e7eb" } },
+			axisLabel: {
+				color: "#8a8a86",
+				fontSize: 11,
+				interval,
+				formatter: (value: string) => formatZhShort(value),
+			},
+		},
+		yAxis: [
+			{
+				type: "value",
+				min: 0,
+				minInterval: 1,
+				name: "并发",
+				nameTextStyle: { color: "#8a8a86", fontSize: 11, padding: [0, 0, 0, 8] },
+				splitLine: { lineStyle: { color: "#f0f0ee" } },
+				axisLabel: { color: "#8a8a86", fontSize: 11 },
+			},
+			{
+				type: "value",
+				min: 0,
+				show: overlay !== "none",
+				splitLine: { show: false },
+				axisLabel: {
+					color: "#8a8a86",
+					fontSize: 11,
+					formatter: (value: number) => (overlay === "cost" ? formatUsd(value) : formatCompactToken(value)),
+				},
+			},
+		],
+		series,
 	};
 }
 
