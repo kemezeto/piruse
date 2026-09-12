@@ -1736,6 +1736,10 @@ textarea {
 	.caret-flip {
 		transition: none;
 	}
+
+	.hint {
+		animation: none;
+	}
 }
 
 .menu-btn.inline {
@@ -1988,7 +1992,8 @@ textarea {
 
 .welcome .composer-shell,
 .welcome .approvals,
-.welcome .notice {
+.welcome .notice,
+.welcome .hint {
 	width: 100%;
 }
 
@@ -2359,6 +2364,16 @@ textarea {
 	text-align: center;
 	color: var(--muted);
 	font-size: 0.75rem;
+	animation: hint-in 0.45s ease;
+}
+
+@keyframes hint-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
 }
 
 .approvals {

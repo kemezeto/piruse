@@ -109,6 +109,7 @@ export function Workspace({
 							workspace={workspacePicker}
 							permission={permissionPicker}
 						/>
+						<HintTicker />
 					</div>
 				) : (
 					<Thread items={state.items} />
@@ -127,10 +128,56 @@ export function Workspace({
 						workspace={null}
 						permission={permissionPicker}
 					/>
-					<p className="hint">内容由 AI 生成，请核实重要信息</p>
+					<HintTicker />
 				</div>
 			)}
 		</main>
+	);
+}
+
+const HINTS = [
+	"一件事一个窗口，聊得越短它越清醒",
+	"换话题了？开个新窗口吧",
+	"事情办完就关掉，晾久了它会忘事",
+	"开头就说清楚：要什么、有什么限制、怎样算做好",
+	"告诉它在哪个文件，别让它满仓库乱翻",
+	"要改的地方一次说完，省得来回跑好几趟",
+	"报错直接贴给它，别让它自己去复现",
+	"不想听解释，就说一句「只要结论」",
+	"别让它把你刚说过的话再念一遍",
+	"长文件只贴用得上的那几段",
+	"日志贴报错前后几行就够了",
+	"聊长了，先让它总结一句再开新窗口",
+	"同样的事做第二遍，让它存成模板",
+	"常用背景写进说明文件，省得每次重讲",
+	"事情复杂，先让它出方案，你点头了再动手",
+	"改完马上试一下，别攒到最后一起看",
+] as const;
+
+const HINT_ROTATE_MS = 3 * 60 * 1000;
+
+function HintTicker() {
+	const [index, setIndex] = useState(() => Math.floor(Date.now() / HINT_ROTATE_MS) % HINTS.length);
+
+	useEffect(() => {
+		let intervalId = 0;
+		const alignMs = HINT_ROTATE_MS - (Date.now() % HINT_ROTATE_MS);
+		const timeoutId = window.setTimeout(() => {
+			setIndex(Math.floor(Date.now() / HINT_ROTATE_MS) % HINTS.length);
+			intervalId = window.setInterval(() => {
+				setIndex(Math.floor(Date.now() / HINT_ROTATE_MS) % HINTS.length);
+			}, HINT_ROTATE_MS);
+		}, alignMs);
+		return () => {
+			window.clearTimeout(timeoutId);
+			window.clearInterval(intervalId);
+		};
+	}, []);
+
+	return (
+		<p className="hint" key={index} aria-live="polite">
+			{HINTS[index]}
+		</p>
 	);
 }
 
