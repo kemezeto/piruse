@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronDownIcon, FilterIcon, RefreshIcon } from "tdesign-icons-react";
-import { Popup } from "tdesign-react";
+import { Pagination, Popup } from "tdesign-react";
 import type { ViewModelOption, ViewProjectOption } from "@protocol/view";
 import { relativeTime } from "../format";
 import {
@@ -42,6 +42,8 @@ export function Activity({ projects, models }: { projects: ViewProjectOption[]; 
 	const [desc, setDesc] = useState(true);
 	const [updatedAt, setUpdatedAt] = useState(Date.now);
 	const [overlayOpen, setOverlayOpen] = useState(false);
+	const [page, setPage] = useState(1);
+	const [pageSize, setPageSize] = useState(10);
 
 	const resolved = useMemo(() => resolveRange(range, today), [range, today]);
 	const options = useMemo(() => activityFilterOptions(projects), [projects]);
@@ -50,8 +52,18 @@ export function Activity({ projects, models }: { projects: ViewProjectOption[]; 
 		[resolved, projects, models, project, agent, session, updatedAt, today],
 	);
 	const rows = useMemo(() => sortedActivity(stats.rows, sort, desc), [stats.rows, sort, desc]);
-	const chart = useMemo(() => concurrencyOption(stats.days, overlay, today), [stats.days, overlay, today]);
+	const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
+	const currentPage = Math.min(page, pageCount);
+	const paged = useMemo(
+		() => rows.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+		[rows, currentPage, pageSize],
+	);
+	const chart = useMemo(() => concurrencyOption(stats.days, overlay), [stats.days, overlay]);
 	const overlayLabel = OVERLAYS.find((item) => item.id === overlay)?.label ?? "Token";
+
+	useEffect(() => {
+		setPage(1);
+	}, [project, agent, session, sort, desc, resolved.start, resolved.end]);
 
 	function toggleSort(next: ActivitySort): void {
 		if (sort === next) setDesc((current) => !current);
@@ -180,7 +192,7 @@ export function Activity({ projects, models }: { projects: ViewProjectOption[]; 
 							</tr>
 						</thead>
 						<tbody>
-							{rows.map((item) => (
+							{paged.map((item) => (
 								<tr key={item.id}>
 									<td>
 										<button type="button" className="act-session">
@@ -198,6 +210,23 @@ export function Activity({ projects, models }: { projects: ViewProjectOption[]; 
 						</tbody>
 					</table>
 				</div>
+				{rows.length > 0 ? (
+					<div className="act-pager">
+						<Pagination
+							current={currentPage}
+							pageSize={pageSize}
+							total={rows.length}
+							size="small"
+							showJumper
+							totalContent={false}
+							pageSizeOptions={[10, 20, 50]}
+							onChange={(info) => {
+								setPage(info.current);
+								setPageSize(info.pageSize);
+							}}
+						/>
+					</div>
+				) : null}
 			</section>
 		</div>
 	);

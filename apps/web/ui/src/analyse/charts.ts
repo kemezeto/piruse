@@ -475,14 +475,8 @@ export function costTreemapOption(slices: UsageSlice[], kind: UsageValueKind = "
 	};
 }
 
-export function concurrencyOption(
-	days: ActivityDay[],
-	overlay: OverlayMetric,
-	today: string,
-): EChartsCoreOption {
+export function concurrencyOption(days: ActivityDay[], overlay: OverlayMetric): EChartsCoreOption {
 	const names = days.map((item) => item.date);
-	const future = days.find((item) => item.date >= today)?.date;
-	const last = days[days.length - 1]?.date;
 	const interval = Math.max(0, Math.floor((Math.max(days.length, 1) - 1) / 3));
 	const overlayName = overlay === "cost" ? "成本" : overlay === "token" ? "Token" : "";
 	const overlayData = days.map((item) =>
@@ -496,14 +490,6 @@ export function concurrencyOption(
 			barMaxWidth: 14,
 			itemStyle: { color: "#4f7dff" },
 			data: days.map((item) => item.interactive),
-			markArea:
-				future && last && future <= last
-					? {
-							silent: true,
-							itemStyle: { color: "rgba(15, 18, 22, 0.045)" },
-							data: [[{ xAxis: future }, { xAxis: last }]],
-						}
-					: undefined,
 		},
 		{
 			name: "自动化",

@@ -1399,6 +1399,16 @@ textarea {
 	text-decoration: underline;
 }
 
+.act-pager {
+	display: flex;
+	justify-content: flex-end;
+	padding: 0.85rem 0.15rem 0.15rem;
+}
+
+.act-pager .t-pagination {
+	font-size: 0.78rem;
+}
+
 .popover-item-label {
 	color: var(--muted);
 	font-size: 0.7rem;
