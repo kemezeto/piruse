@@ -118,13 +118,15 @@ export function SessionInspect({
 			</header>
 			<div className="sess-body">
 				<div className="sess-thread">
-					{items.length === 0 ? (
-						<p className="sess-blank">这场对话还没有消息。</p>
-					) : turns.length === 0 ? (
-						<p className="sess-blank">没有匹配的消息。</p>
-					) : (
-						turns.map((turn) => <Turn key={turn.id} turn={turn} />)
-					)}
+					<div className="sess-thread-inner">
+						{items.length === 0 ? (
+							<p className="sess-blank">这场对话还没有消息。</p>
+						) : turns.length === 0 ? (
+							<p className="sess-blank">没有匹配的消息。</p>
+						) : (
+							turns.map((turn) => <Turn key={turn.id} turn={turn} />)
+						)}
+					</div>
 				</div>
 				{panel ? (
 					<aside className="sess-panel" aria-label="分析">
@@ -137,6 +139,7 @@ export function SessionInspect({
 								<CloseIcon size={14} />
 							</button>
 						</div>
+						<div className="sess-panel-body">
 						<dl className="sess-stats">
 							<div>
 								<dt>会话</dt>
@@ -212,7 +215,7 @@ export function SessionInspect({
 							</div>
 							<ChainChart events={events} rounds={rounds} mode={chain} />
 						</div>
-						<div className="sess-block">
+						<div className="sess-block sess-calls-block">
 							<div className="sess-block-row">
 								<span>调用</span>
 								<strong>{tools.length}</strong>
@@ -230,6 +233,7 @@ export function SessionInspect({
 									);
 								})}
 							</ol>
+						</div>
 						</div>
 					</aside>
 				) : null}
