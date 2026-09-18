@@ -4,8 +4,8 @@ import { Menu } from "./Menu";
 
 const PERMISSIONS: { mode: PermissionMode; label: string; hint: string }[] = [
 	{ mode: "read", label: "只读", hint: "只读代码，不写文件、不跑命令" },
-	{ mode: "review", label: "审核", hint: "改文件或跑命令前询问" },
-	{ mode: "allow", label: "允许", hint: "改文件和命令直接执行；删除/回滚/强推仍会问" },
+	{ mode: "review", label: "审核", hint: "改文件或跑命令前询问；可记住本会话或命令前缀" },
+	{ mode: "allow", label: "允许", hint: "工作区内直接执行；区外、.git/.env 和危险命令仍会问" },
 ];
 
 function PermissionIcon({ mode, size = 16 }: { mode: PermissionMode; size?: number }) {

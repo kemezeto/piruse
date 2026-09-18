@@ -176,7 +176,7 @@ wss.on("connection", (socket) => {
 		void (async () => {
 			try {
 				if (message.type === "approveTool" && message.id) {
-					operator.resolveApproval(message.id, true);
+					operator.resolveApproval(message.id, true, message.remember);
 					return;
 				}
 				if (message.type === "denyTool" && message.id) {

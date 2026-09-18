@@ -1,4 +1,4 @@
-import type { ViewState, PermissionMode } from "./view.ts";
+import type { ViewState, PermissionMode, ApprovalRemember } from "./view.ts";
 
 /** Browser → host. No harness types. */
 export type ClientMessage =
@@ -14,7 +14,7 @@ export type ClientMessage =
 	| { type: "deleteArchivedSession"; sessionId?: string }
 	| { type: "setSessionTitle"; sessionId?: string; title?: string }
 	| { type: "setPermissionMode"; mode?: PermissionMode }
-	| { type: "approveTool"; id?: string }
+	| { type: "approveTool"; id?: string; remember?: ApprovalRemember }
 	| { type: "denyTool"; id?: string }
 	| { type: "addProvider"; id?: string; name?: string; baseUrl?: string; api?: string; apiKey?: string }
 	| { type: "addModel"; provider?: string; modelId?: string; name?: string; reasoning?: boolean; contextWindow?: number; maxTokens?: number }

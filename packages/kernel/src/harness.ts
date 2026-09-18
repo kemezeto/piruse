@@ -12,8 +12,11 @@ import {
 import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
 import type { MutableModels, Provider } from "@earendil-works/pi-ai";
 import type {
+	ApprovalRemember,
 	ViewArchivedSession,
+	ViewApproval,
 	ViewModelOption,
+	ViewPackageStatus,
 	ViewProjectOption,
 	ViewProviderChoice,
 	ViewProviderOption,
@@ -48,7 +51,6 @@ import { installPermissionHooks, PermissionGate } from "./hooks.ts";
 import { PackageHost } from "./extensions/index.ts";
 import { asAgentMessage, customTypeOf, toJsonValue } from "./extensions/runtime.ts";
 import { setResourceEnabled } from "./packages/enable.ts";
-import type { ViewApproval, ViewPackageStatus } from "../../protocol/src/view.ts";
 
 export interface BootOptions {
 	cwd: string;
@@ -90,7 +92,7 @@ export interface BootedHarness {
 	unarchiveSession(sessionId: string): Promise<void>;
 	deleteArchivedSession(sessionId: string): Promise<void>;
 	setPermissionMode(mode: PermissionMode): Promise<void>;
-	resolveApproval(id: string, allow: boolean): void;
+	resolveApproval(id: string, allow: boolean, remember?: ApprovalRemember): void;
 	rejectApprovals(): void;
 	onPermissionChange(listener: () => void): () => void;
 	permissionMode(): PermissionMode;
@@ -183,6 +185,7 @@ export class Operator implements BootedHarness {
 			() => [...profile.tools(), ...packages.tools()].map((tool) => tool.name),
 			profile.permissionDefault,
 		);
+		await gate.restoreGrants();
 		const bound = await Operator.bindSession(
 			context,
 			cwd,
@@ -502,8 +505,8 @@ export class Operator implements BootedHarness {
 		await this.permissions.setMode(mode, this.lane, this.context);
 	}
 
-	resolveApproval(id: string, allow: boolean): void {
-		this.permissions.resolve(id, allow);
+	resolveApproval(id: string, allow: boolean, remember?: ApprovalRemember): void {
+		this.permissions.resolve(id, allow, remember);
 	}
 
 	rejectApprovals(): void {

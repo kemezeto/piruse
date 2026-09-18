@@ -77,7 +77,7 @@ export function Workspace({
 	const approvals = (
 		<ApprovalList
 			items={state?.pendingApprovals ?? []}
-			onAllow={(id) => onCommand({ type: "approveTool", id })}
+			onAllow={(id, remember) => onCommand({ type: "approveTool", id, remember })}
 			onDeny={(id) => onCommand({ type: "denyTool", id })}
 		/>
 	);

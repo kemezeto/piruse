@@ -2390,14 +2390,20 @@ textarea {
 	border-radius: 0.95rem;
 	padding: 0.7rem 0.8rem;
 	display: flex;
-	gap: 0.8rem;
-	align-items: center;
-	justify-content: space-between;
+	flex-direction: column;
+	gap: 0.55rem;
 	box-shadow: var(--shadow);
 }
 
 .approval.danger {
 	border-color: color-mix(in srgb, var(--danger) 35%, var(--line));
+}
+
+.approval-main {
+	display: flex;
+	gap: 0.8rem;
+	align-items: center;
+	justify-content: space-between;
 }
 
 .approval-copy {
@@ -2464,6 +2470,29 @@ textarea {
 
 .approval-allow:hover {
 	background: var(--td-brand-color-hover);
+}
+
+.approval-remember {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.3rem;
+	justify-content: flex-end;
+}
+
+.approval-remember-btn {
+	border: 1px solid var(--line);
+	background: var(--bg);
+	color: var(--muted);
+	border-radius: 0.55rem;
+	padding: 0.28rem 0.55rem;
+	cursor: pointer;
+	font-size: 0.72rem;
+	font-weight: 550;
+}
+
+.approval-remember-btn:hover {
+	color: var(--ink);
+	background: var(--chip);
 }
 
 .confirm {

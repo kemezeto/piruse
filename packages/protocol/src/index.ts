@@ -14,4 +14,5 @@ export type {
 	ViewPackageItem,
 	PermissionMode,
 	ApprovalReason,
+	ApprovalRemember,
 } from "./view.ts";

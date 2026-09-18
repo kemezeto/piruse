@@ -1,20 +1,24 @@
 import type { AgentHarness, AgentLane, Context } from "@earendil-works/pi-agent-core";
-import type { ViewApproval } from "../../protocol/src/view.ts";
+import type { ApprovalRemember, ViewApproval } from "../../protocol/src/view.ts";
 import { formatArgs } from "./messages.ts";
-import { readPermissionMode, writePermissionMode } from "./session/permissions.ts";
+import { addBashPrefix, readPermissionMode, readStoredPermissions, writePermissionMode } from "./session/permissions.ts";
 import {
 	activeToolNamesForMode,
-	approvalReason,
-	type ApprovalReason,
+	emptyGrants,
+	grantsAllow,
+	inspectToolCall,
+	isApprovalRemember,
 	isPermissionMode,
+	type CallVerdict,
 	type PermissionMode,
+	type SessionGrants,
 } from "./tools/policy.ts";
 
 interface PendingCall {
 	id: string;
 	toolName: string;
 	args: Record<string, unknown>;
-	reason: ApprovalReason;
+	verdict: CallVerdict;
 	resolve: (allow: boolean) => void;
 }
 
@@ -22,6 +26,7 @@ export class PermissionGate {
 	mode: PermissionMode;
 	private readonly pending = new Map<string, PendingCall>();
 	private readonly listeners = new Set<() => void>();
+	private grants: SessionGrants = emptyGrants();
 
 	constructor(
 		private readonly sessionsRoot: string,
@@ -46,7 +51,10 @@ export class PermissionGate {
 			id: call.id,
 			toolName: call.toolName,
 			args: formatArgs(call.args),
-			reason: call.reason,
+			reason: call.verdict.reason ?? "execute",
+			remember: call.verdict.remember,
+			prefix: call.verdict.prefix,
+			path: call.verdict.displayPath,
 		}));
 	}
 
@@ -59,9 +67,22 @@ export class PermissionGate {
 		await lane.setActiveTools(activeToolNamesForMode(this.mode, available), context);
 	}
 
+	async restoreGrants(): Promise<void> {
+		const stored = await readStoredPermissions(this.sessionsRoot, this.cwd);
+		this.grants = emptyGrants(stored.bashPrefixes);
+	}
+
+	clearSessionGrants(): void {
+		this.grants.classes.clear();
+		this.grants.paths.clear();
+	}
+
 	async loadForCwd(cwd: string, context: Context, lane: AgentLane): Promise<void> {
+		const changed = this.cwd !== cwd;
 		this.cwd = cwd;
 		this.rejectAll("Project changed");
+		this.clearSessionGrants();
+		if (changed) await this.restoreGrants();
 		if (this.interactive) {
 			this.mode = (await readPermissionMode(this.sessionsRoot, cwd)) ?? this.permissionDefault;
 		}
@@ -74,17 +95,20 @@ export class PermissionGate {
 		this.mode = mode;
 		if (this.interactive) await writePermissionMode(this.sessionsRoot, this.cwd, mode).catch(() => {});
 		for (const call of [...this.pending.values()]) {
-			const still = approvalReason(mode, call.toolName, call.args);
-			if (!still) this.settle(call.id, true);
+			const verdict = inspectToolCall(mode, call.toolName, call.args, this.cwd);
+			if (!verdict.reason || grantsAllow(verdict, this.grants)) this.settle(call.id, true);
 			else if (mode === "read") this.settle(call.id, false);
+			else call.verdict = verdict;
 		}
 		await this.applyTools(lane, context);
 		this.emit();
 	}
 
-	resolve(id: string, allow: boolean): void {
+	resolve(id: string, allow: boolean, remember?: ApprovalRemember): void {
 		if (!this.pending.has(id)) throw new Error(`Unknown approval: ${id}`);
+		if (allow && remember) this.remember(id, remember);
 		this.settle(id, allow);
+		if (allow && remember) this.sweepGranted();
 		this.emit();
 	}
 
@@ -93,6 +117,31 @@ export class PermissionGate {
 		for (const id of [...this.pending.keys()]) this.settle(id, false);
 		void reason;
 		this.emit();
+	}
+
+	private remember(id: string, remember: ApprovalRemember): void {
+		const call = this.pending.get(id);
+		if (!call || !isApprovalRemember(remember)) return;
+		if (remember === "session") {
+			if (call.verdict.reason === "mutate") this.grants.classes.add("mutate");
+			if (call.verdict.reason === "execute") this.grants.classes.add("execute");
+			return;
+		}
+		if (remember === "path" && call.verdict.path) {
+			this.grants.paths.add(call.verdict.path);
+			return;
+		}
+		if (remember === "prefix" && call.verdict.prefix) {
+			if (!this.grants.prefixes.includes(call.verdict.prefix)) this.grants.prefixes.push(call.verdict.prefix);
+			void addBashPrefix(this.sessionsRoot, this.cwd, call.verdict.prefix).catch(() => {});
+		}
+	}
+
+	private sweepGranted(): void {
+		for (const call of [...this.pending.values()]) {
+			const verdict = inspectToolCall(this.mode, call.toolName, call.args, this.cwd);
+			if (!verdict.reason || grantsAllow(verdict, this.grants)) this.settle(call.id, true);
+		}
 	}
 
 	private settle(id: string, allow: boolean): void {
@@ -111,15 +160,15 @@ export class PermissionGate {
 		args: Record<string, unknown>,
 		context: Context,
 	): Promise<{ block?: { reason: string } } | undefined> {
-		const reason = approvalReason(this.mode, toolName, args);
-		if (!reason) return undefined;
+		const verdict = inspectToolCall(this.mode, toolName, args, this.cwd);
+		if (!verdict.reason || grantsAllow(verdict, this.grants)) return undefined;
 		if (this.mode === "read") {
 			return { block: { reason: `只读模式不允许 ${toolName}` } };
 		}
 		if (!this.interactive) {
 			return { block: { reason: `需要批准才能运行 ${toolName}（非交互）` } };
 		}
-		const allow = await this.wait(id, toolName, args, reason, context);
+		const allow = await this.wait(id, toolName, args, verdict, context);
 		if (!allow) return { block: { reason: `已拒绝 ${toolName}` } };
 		return undefined;
 	}
@@ -128,7 +177,7 @@ export class PermissionGate {
 		id: string,
 		toolName: string,
 		args: Record<string, unknown>,
-		reason: ApprovalReason,
+		verdict: CallVerdict,
 		context: Context,
 	): Promise<boolean> {
 		return new Promise((resolve) => {
@@ -148,7 +197,7 @@ export class PermissionGate {
 				finish(false);
 				return;
 			}
-			this.pending.set(id, { id, toolName, args, reason, resolve: finish });
+			this.pending.set(id, { id, toolName, args, verdict, resolve: finish });
 			context.abortSignal?.addEventListener("abort", onAbort, { once: true });
 			this.emit();
 		});

@@ -45,13 +45,18 @@ export interface ViewProjectOption {
 
 export type PermissionMode = "read" | "review" | "allow";
 
-export type ApprovalReason = "mutate" | "execute" | "dangerous";
+export type ApprovalReason = "mutate" | "execute" | "dangerous" | "outside" | "protected";
+
+export type ApprovalRemember = "session" | "prefix" | "path";
 
 export interface ViewApproval {
 	id: string;
 	toolName: string;
 	args: string;
 	reason: ApprovalReason;
+	remember?: ApprovalRemember[];
+	prefix?: string;
+	path?: string;
 }
 
 export interface ViewPackageItem {
