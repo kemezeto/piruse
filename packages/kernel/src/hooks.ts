@@ -9,10 +9,12 @@ import {
 	inspectToolCall,
 	isApprovalRemember,
 	isPermissionMode,
+	toolClass,
 	type CallVerdict,
 	type PermissionMode,
 	type SessionGrants,
 } from "./tools/policy.ts";
+import { commandReadTargets } from "./tools/scope.ts";
 
 interface PendingCall {
 	id: string;
@@ -161,6 +163,12 @@ export class PermissionGate {
 		context: Context,
 	): Promise<{ block?: { reason: string } } | undefined> {
 		const verdict = inspectToolCall(this.mode, toolName, args, this.cwd);
+		if (verdict.reason === "protected") {
+			const kind = toolClass(toolName);
+			const command = typeof args.command === "string" ? args.command : "";
+			const reading = kind === "observe" || (toolName === "bash" && commandReadTargets(command).length > 0);
+			if (reading) return { block: { reason: "受保护路径，不能读取密钥或凭据文件" } };
+		}
 		if (!verdict.reason || grantsAllow(verdict, this.grants)) return undefined;
 		if (this.mode === "read") {
 			return { block: { reason: `只读模式不允许 ${toolName}` } };

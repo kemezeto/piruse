@@ -36,7 +36,7 @@ export function groupTurns(items: ViewItem[]): InspectTurn[] {
 		if (item.kind === "user") turns.push({ kind: "user", id: item.id, text: item.text, at: item.at });
 		else if (item.kind === "assistant") {
 			turns.push({ kind: "assistant", id: item.id, text: item.text, at: item.at, tokens: item.tokens });
-		} else turns.push({ kind: "note", id: item.id, text: item.text, at: item.at });
+		} else if (item.kind === "note") turns.push({ kind: "note", id: item.id, text: item.text, at: item.at });
 	}
 	flush();
 	return turns;
@@ -90,6 +90,9 @@ export function matchesQuery(item: ViewItem, query: string): boolean {
 	const needle = query.toLowerCase();
 	if (item.kind === "tool") {
 		return `${item.name} ${item.args} ${item.result ?? ""}`.toLowerCase().includes(needle);
+	}
+	if (item.kind === "assistant") {
+		return `${item.text} ${item.thinking ?? ""}`.toLowerCase().includes(needle);
 	}
 	return item.text.toLowerCase().includes(needle);
 }

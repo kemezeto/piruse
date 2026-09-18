@@ -26,7 +26,14 @@ import { compactionSettings } from "./compaction/settings.ts";
 import { userText } from "./messages.ts";
 import { FileCredentialStore } from "./models/auth-store.ts";
 import { applyCustomCatalog } from "./models/apply-custom.ts";
-import { listAvailableModels, listProviderCatalog, resolveConfiguredModel } from "./models/index.ts";
+import {
+	asThinkingLevel,
+	clampModelThinking,
+	listAvailableModels,
+	listProviderCatalog,
+	patchAgentSettings,
+	resolveConfiguredModel,
+} from "./models/index.ts";
 import { loadModelsJson, saveModelsJson, type ModelsJsonModel } from "./models/models-json.ts";
 import type { AgentPaths } from "./models/paths.ts";
 import { isArchived, readArchiveIndex, writeArchiveIndex } from "./session/archive.ts";
@@ -85,6 +92,7 @@ export interface BootedHarness {
 	setSessionTitle(sessionId: string | undefined, title: string): Promise<void>;
 	rememberTitleFromPrompt(text: string): Promise<void>;
 	setModel(provider: string, modelId: string): Promise<void>;
+	setThinkingLevel(level: string): Promise<void>;
 	openSession(sessionId: string): Promise<void>;
 	newSession(): Promise<void>;
 	openProject(cwd: string): Promise<void>;
@@ -113,6 +121,11 @@ export interface BootedHarness {
 	isRunning(): Promise<boolean>;
 }
 
+interface LiveConfig {
+	model: { provider: string; id: string };
+	thinkingLevel: ThinkingLevel;
+}
+
 export class Operator implements BootedHarness {
 	cwd: string;
 	session: Session<JsonlSessionMetadata>;
@@ -120,12 +133,13 @@ export class Operator implements BootedHarness {
 	lane: AgentLane;
 	open: OpenOperation[];
 	model: { provider: string; id: string };
+	thinkingLevel: ThinkingLevel;
+	private live: LiveConfig;
 
 	private constructor(
 		readonly context: Context,
 		cwd: string,
 		readonly models: MutableModels,
-		readonly thinkingLevel: ThinkingLevel,
 		readonly authSource: string | undefined,
 		private readonly repo: JsonlSessionRepo,
 		private readonly sessionsRoot: string,
@@ -141,7 +155,7 @@ export class Operator implements BootedHarness {
 			harness: AgentHarness;
 			lane: AgentLane;
 			open: OpenOperation[];
-			model: { provider: string; id: string };
+			live: LiveConfig;
 		},
 	) {
 		this.cwd = cwd;
@@ -149,7 +163,9 @@ export class Operator implements BootedHarness {
 		this.harness = bound.harness;
 		this.lane = bound.lane;
 		this.open = bound.open;
-		this.model = bound.model;
+		this.live = bound.live;
+		this.model = bound.live.model;
+		this.thinkingLevel = bound.live.thinkingLevel;
 	}
 
 	static async boot(options: BootOptions): Promise<Operator> {
@@ -202,7 +218,6 @@ export class Operator implements BootedHarness {
 			context,
 			cwd,
 			configured.models,
-			configured.thinkingLevel,
 			configured.authSource,
 			repo,
 			options.sessionsRoot,
@@ -236,19 +251,28 @@ export class Operator implements BootedHarness {
 		harness: AgentHarness;
 		lane: AgentLane;
 		open: OpenOperation[];
-		model: { provider: string; id: string };
+		live: LiveConfig;
 	}> {
 		const catalogModel = models.getModel(model.provider, model.id);
 		if (!catalogModel) throw new Error(`Unknown model ${model.provider}/${model.id}`);
+		const live: LiveConfig = {
+			model: { provider: catalogModel.provider, id: catalogModel.id },
+			thinkingLevel: clampModelThinking(catalogModel, thinkingLevel),
+		};
 		const { harness, open } = await AgentHarness.create(
 			{
 				session,
 				models,
 				model: catalogModel,
-				thinkingLevel,
+				thinkingLevel: live.thinkingLevel,
 				tools: [...profile.tools(), ...packages.tools()],
 				toolContext: { env: executionEnv },
-				systemPrompt: () => profile.systemPrompt(executionEnv.cwd, packages.skills()),
+				systemPrompt: () =>
+					profile.systemPrompt(executionEnv.cwd, packages.skills(), {
+						provider: live.model.provider,
+						modelId: live.model.id,
+						thinkingLevel: live.thinkingLevel,
+					}),
 				compaction: compactionSettings,
 			},
 			context,
@@ -257,14 +281,16 @@ export class Operator implements BootedHarness {
 		packages.installHooks(harness);
 		const lane = await harness.lane("main", context);
 		await permissions.applyTools(lane, context);
-		const live = await lane.getModel(context);
-		return {
-			session,
-			harness,
-			lane,
-			open,
-			model: live ? { provider: live.provider, id: live.id } : { provider: model.provider, id: model.id },
-		};
+		const currentModel = await lane.getModel(context);
+		const liveModel = currentModel ? models.getModel(currentModel.provider, currentModel.id) ?? catalogModel : catalogModel;
+		const liveThinking = await lane.getThinkingLevel(context);
+		const nextThinking = clampModelThinking(liveModel, liveThinking);
+		if (nextThinking !== liveThinking) await lane.setThinkingLevel(nextThinking, context);
+		live.model = currentModel
+			? { provider: currentModel.provider, id: currentModel.id }
+			: { provider: model.provider, id: model.id };
+		live.thinkingLevel = nextThinking;
+		return { session, harness, lane, open, live };
 	}
 
 	async listModels(): Promise<ViewModelOption[]> {
@@ -398,7 +424,26 @@ export class Operator implements BootedHarness {
 		const auth = await this.models.checkAuth(found.provider);
 		if (!auth) throw new Error(`${found.provider} is not authenticated`);
 		await this.lane.setModel({ provider: found.provider, modelId: found.id }, this.context);
-		this.model = { provider: found.provider, id: found.id };
+		this.live.model = { provider: found.provider, id: found.id };
+		this.model = this.live.model;
+		const current = await this.lane.getThinkingLevel(this.context);
+		const next = clampModelThinking(found, current);
+		if (next !== current) await this.lane.setThinkingLevel(next, this.context);
+		this.live.thinkingLevel = next;
+		this.thinkingLevel = next;
+		this.syncExtensionRuntime();
+	}
+
+	async setThinkingLevel(level: string): Promise<void> {
+		const parsed = asThinkingLevel(level);
+		if (!parsed) throw new Error(`Unknown thinking level "${level}"`);
+		const found = this.models.getModel(this.model.provider, this.model.id);
+		if (!found) throw new Error(`Unknown model ${this.model.provider}/${this.model.id}`);
+		const next = clampModelThinking(found, parsed);
+		await this.lane.setThinkingLevel(next, this.context);
+		this.live.thinkingLevel = next;
+		this.thinkingLevel = next;
+		await patchAgentSettings(this.paths.settings, { defaultThinkingLevel: parsed });
 		this.syncExtensionRuntime();
 	}
 
@@ -606,7 +651,9 @@ export class Operator implements BootedHarness {
 			this.harness = bound.harness;
 			this.lane = bound.lane;
 			this.open = bound.open;
-			this.model = bound.model;
+			this.live = bound.live;
+			this.model = bound.live.model;
+			this.thinkingLevel = bound.live.thinkingLevel;
 			await this.permissions.loadForCwd(this.cwd, this.context, this.lane);
 			await this.resumeOpen();
 			await this.ensureTitle();
@@ -632,7 +679,9 @@ export class Operator implements BootedHarness {
 			this.harness = bound.harness;
 			this.lane = bound.lane;
 			this.open = bound.open;
-			this.model = bound.model;
+			this.live = bound.live;
+			this.model = bound.live.model;
+			this.thinkingLevel = bound.live.thinkingLevel;
 			await this.permissions.loadForCwd(this.cwd, this.context, this.lane);
 			this.syncExtensionRuntime();
 			throw error;

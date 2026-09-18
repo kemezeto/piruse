@@ -6,22 +6,30 @@ export function itemsFromMessage(id: string, message: AgentMessage, streaming = 
 		return [{ id, kind: "user", text: userText(message.content), at: message.timestamp }];
 	}
 	if (message.role === "assistant") {
-		const items: ViewItem[] = [];
+		const thinking = message.content
+			.filter((block): block is Extract<(typeof message.content)[number], { type: "thinking" }> => block.type === "thinking")
+			.map((block) => (block.redacted ? "（思考已隐藏）" : block.thinking))
+			.filter((part) => part.trim().length > 0)
+			.join("\n\n")
+			.trim();
 		const text = message.content
 			.filter((block) => block.type === "text")
 			.map((block) => block.text)
 			.join("");
-		if (text || streaming) {
-			items.push({
+		const hasThinkingBlock = message.content.some((block) => block.type === "thinking");
+		if (!text && !thinking && !streaming) return [];
+		return [
+			{
 				id,
 				kind: "assistant",
 				text,
+				thinking: thinking || (hasThinkingBlock && streaming ? "" : undefined),
+				thinkingStreaming: Boolean(streaming && hasThinkingBlock && !text),
 				streaming,
 				at: message.timestamp,
 				tokens: message.usage?.totalTokens,
-			});
-		}
-		return items;
+			},
+		];
 	}
 	if (message.role === "toolResult") {
 		return [

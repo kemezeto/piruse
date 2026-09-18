@@ -1,5 +1,6 @@
 import {
 	commandPrefix,
+	commandReadTargets,
 	displayPath,
 	mutatePath,
 	pathScope,
@@ -14,7 +15,7 @@ export type ApprovalReason = "mutate" | "execute" | "dangerous" | "outside" | "p
 export type ApprovalRemember = "session" | "prefix" | "path";
 export type ToolClass = "observe" | "mutate" | "execute";
 
-export { commandPrefix, displayPath, pathScope, prefixMatches, resolveToolPath };
+export { commandPrefix, commandReadTargets, displayPath, pathScope, prefixMatches, resolveToolPath };
 export type { PathScope };
 
 const OBSERVE = new Set(["read", "grep", "glob", "ls", "find"]);
@@ -85,24 +86,34 @@ export function inspectToolCall(
 ): CallVerdict {
 	const kind = toolClass(toolName);
 	const command = toolName === "bash" ? commandText(args) : undefined;
-	const rawPath = kind === "mutate" ? mutatePath(args) : undefined;
+	const rawPath = kind === "mutate" || kind === "observe" ? mutatePath(args) : undefined;
 	const resolved = rawPath ? resolveToolPath(cwd, rawPath) : undefined;
 	const redirectScopes = (command ? redirectTargets(command) : []).map((target) => {
 		const abs = resolveToolPath(cwd, target);
 		return { abs, scope: pathScope(cwd, abs) };
 	});
+	const readScopes = (command ? commandReadTargets(command) : []).map((target) => {
+		const abs = resolveToolPath(cwd, target);
+		return { abs, scope: pathScope(cwd, abs) };
+	});
 	const fileScope = resolved ? pathScope(cwd, resolved) : undefined;
 	const worst =
-		fileScope === "protected" || redirectScopes.some((entry) => entry.scope === "protected")
+		fileScope === "protected" ||
+		redirectScopes.some((entry) => entry.scope === "protected") ||
+		readScopes.some((entry) => entry.scope === "protected")
 			? "protected"
 			: fileScope === "outside" || redirectScopes.some((entry) => entry.scope === "outside")
 				? "outside"
 				: fileScope;
-	const scoped = worst === "protected" || worst === "outside" ? (resolved ?? redirectScopes.find((entry) => entry.scope === worst)?.abs) : resolved;
+	const scoped =
+		worst === "protected" || worst === "outside"
+			? (resolved ??
+				redirectScopes.find((entry) => entry.scope === worst)?.abs ??
+				readScopes.find((entry) => entry.scope === worst)?.abs)
+			: resolved;
 	const prefix = command ? commandPrefix(command) : undefined;
 	const dangerous = Boolean(command && isDangerousBash(command));
 
-	if (kind === "observe") return { reason: null, remember: [] };
 	if (dangerous) return { reason: "dangerous", command, remember: [] };
 	if (worst === "protected") {
 		return {
@@ -113,6 +124,7 @@ export function inspectToolCall(
 			remember: [],
 		};
 	}
+	if (kind === "observe") return { reason: null, remember: [] };
 	if (worst === "outside") {
 		return {
 			reason: "outside",

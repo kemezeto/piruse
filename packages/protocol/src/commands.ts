@@ -1,10 +1,11 @@
-import type { ViewState, PermissionMode, ApprovalRemember } from "./view.ts";
+import type { ViewState, PermissionMode, ApprovalRemember, ThinkingLevel } from "./view.ts";
 
 /** Browser → host. No harness types. */
 export type ClientMessage =
 	| { type: "prompt"; text?: string }
 	| { type: "abort" }
 	| { type: "setModel"; provider?: string; modelId?: string }
+	| { type: "setThinkingLevel"; level?: ThinkingLevel }
 	| { type: "openSession"; sessionId?: string }
 	| { type: "newSession" }
 	| { type: "openProject"; cwd?: string }

@@ -407,7 +407,13 @@ function discoveryTools(): AgentHarnessTool<ExecutionToolContext>[] {
 
 function childSystemPrompt(launch: ChildSessionLaunch, host: ExtensionRuntime): string {
 	const skills = launch.noSkills ? [] : host.skills;
-	const base = launch.systemPrompt ?? host.profile.systemPrompt(launch.cwd, skills);
+	const base =
+		launch.systemPrompt ??
+		host.profile.systemPrompt(launch.cwd, skills, {
+			provider: host.model.provider,
+			modelId: host.model.id,
+			thinkingLevel: host.thinkingLevel,
+		});
 	return launch.appendSystemPrompt ? `${base}\n\n${launch.appendSystemPrompt}` : base;
 }
 

@@ -64,3 +64,15 @@ test("pathScope treats .ssh as protected", () => {
 	assert.equal(pathScope(cwd, join(cwd, "src/main.ts")), "workspace");
 	assert.equal(pathScope(cwd, "/var/tmp/out.txt"), "outside");
 });
+
+test("allow mode still asks to read auth.json and ~/.pi", () => {
+	assert.equal(inspectToolCall("allow", "read", { path: join(homedir(), ".pi/agent/auth.json") }, cwd).reason, "protected");
+	assert.equal(inspectToolCall("allow", "read", { path: join(homedir(), ".pi/agent/settings.json") }, cwd).reason, "protected");
+	assert.equal(inspectToolCall("allow", "grep", { path: join(homedir(), ".piruse"), pattern: "key" }, cwd).reason, "protected");
+	assert.equal(inspectToolCall("allow", "read", { path: "src/app.ts" }, cwd).reason, null);
+});
+
+test("bash cat of credential files is protected", () => {
+	assert.equal(inspectToolCall("allow", "bash", { command: "cat ~/.pi/agent/auth.json" }, cwd).reason, "protected");
+	assert.equal(inspectToolCall("allow", "bash", { command: "cat src/app.ts" }, cwd).reason, null);
+});

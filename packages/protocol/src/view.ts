@@ -1,8 +1,18 @@
 /** What the browser is allowed to see. No Model, lane, or harness objects. */
+
+export const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
+
+export type ThinkingLevel = (typeof THINKING_LEVELS)[number];
+
+export function isThinkingLevel(value: unknown): value is ThinkingLevel {
+	return typeof value === "string" && (THINKING_LEVELS as readonly string[]).includes(value);
+}
+
 export interface ViewModelOption {
 	provider: string;
 	modelId: string;
 	name: string;
+	thinkingLevels: ThinkingLevel[];
 }
 
 export interface ViewProviderChoice {
@@ -81,6 +91,7 @@ export interface ViewState {
 	cwd: string;
 	sessionPath: string;
 	model: { provider: string; modelId: string };
+	thinkingLevel: ThinkingLevel;
 	models: ViewModelOption[];
 	providers: ViewProviderOption[];
 	providerChoices: ViewProviderChoice[];
@@ -96,7 +107,7 @@ export interface ViewState {
 
 export type ViewItem =
 	| { id: string; kind: "user"; text: string; at?: number }
-	| { id: string; kind: "assistant"; text: string; streaming?: boolean; at?: number; tokens?: number }
+	| { id: string; kind: "assistant"; text: string; thinking?: string; thinkingStreaming?: boolean; streaming?: boolean; at?: number; tokens?: number }
 	| {
 			id: string;
 			kind: "tool";

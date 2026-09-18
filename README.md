@@ -14,6 +14,16 @@ Agent 本体是 `packages/kernel`。Web / CLI 是调用方。模型目录和密�
 
 ![4](picture/4.jpg)
 
+![5](picture/5.jpg)
+
+![6](picture/6.jpg)
+
+![7](picture/7.jpg)
+
+![8](picture/8.jpg)
+
+![9](picture/9.jpg)
+
 ## 要不要装 pi
 
 **不用。** 跑 piruse 不需要安装 [pi](https://github.com/badlogic/pi-mono) CLI，也不依赖 `@earendil-works/pi-coding-agent`。`npm install` 之后直接 `npm run web` / `npm start` 即可。

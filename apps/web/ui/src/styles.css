@@ -2059,6 +2059,71 @@ textarea {
 	color: var(--muted);
 }
 
+.thinking {
+	margin: 0 0 0.9rem;
+	border-radius: 0.75rem;
+	background: var(--chip);
+}
+
+.thinking-toggle {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	width: 100%;
+	margin: 0;
+	padding: 0.45rem 0.7rem;
+	border: 0;
+	background: transparent;
+	color: var(--muted);
+	font-size: 0.8rem;
+	font-weight: 550;
+	text-align: left;
+	cursor: pointer;
+}
+
+.thinking-caret {
+	margin-left: auto;
+}
+
+.thinking.is-open .thinking-caret {
+	transform: rotate(90deg);
+}
+
+.thinking-body {
+	margin: 0;
+	padding: 0 0.75rem 0.7rem;
+	max-height: 14rem;
+	overflow: auto;
+	white-space: pre-wrap;
+	word-break: break-word;
+	color: var(--muted);
+	font-size: 0.8rem;
+	line-height: 1.55;
+	font-family: "Source Code Pro", ui-monospace, monospace;
+}
+
+.thinking.streaming .thinking-label::after {
+	content: "";
+	display: inline-block;
+	width: 0.35em;
+	height: 0.35em;
+	margin-left: 0.4rem;
+	border-radius: 50%;
+	background: currentColor;
+	animation: thinking-pulse 1s ease-in-out infinite;
+	vertical-align: middle;
+}
+
+@keyframes thinking-pulse {
+	0%,
+	100% {
+		opacity: 0.25;
+	}
+	50% {
+		opacity: 1;
+	}
+}
+
 .assistant .md {
 	word-break: break-word;
 }

@@ -64,6 +64,7 @@ export function projectView(meta: ViewMeta, lane: LaneSnapshot): ViewState {
 		cwd: meta.cwd,
 		sessionPath: meta.sessionPath,
 		model: lane.configuration.model,
+		thinkingLevel: lane.configuration.thinkingLevel,
 		models: meta.models,
 		providers: meta.providers,
 		providerChoices: meta.providerChoices,

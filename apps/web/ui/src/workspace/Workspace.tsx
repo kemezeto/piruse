@@ -4,6 +4,7 @@ import { ApprovalList } from "../approvals/ApprovalList";
 import { ModelPicker } from "../pickers/ModelPicker";
 import { PermissionPicker } from "../pickers/PermissionPicker";
 import { ProjectPicker } from "../pickers/ProjectPicker";
+import { ThinkingPicker } from "../pickers/ThinkingPicker";
 import type { HostCommand, Line } from "../socket";
 import { Composer } from "./Composer";
 import { Thread } from "./Thread";
@@ -53,11 +54,21 @@ export function Workspace({
 	}, [empty]);
 
 	const modelPicker = state ? (
-		<ModelPicker
-			current={state.model}
-			models={state.models}
-			onSelect={(model) => onCommand({ type: "setModel", provider: model.provider, modelId: model.modelId })}
-		/>
+		<>
+			<ThinkingPicker
+				current={state.thinkingLevel ?? "off"}
+				levels={
+					state.models.find((model) => model.provider === state.model.provider && model.modelId === state.model.modelId)
+						?.thinkingLevels ?? ["off"]
+				}
+				onSelect={(level) => onCommand({ type: "setThinkingLevel", level })}
+			/>
+			<ModelPicker
+				current={state.model}
+				models={state.models}
+				onSelect={(model) => onCommand({ type: "setModel", provider: model.provider, modelId: model.modelId })}
+			/>
+		</>
 	) : null;
 	const workspacePicker = state ? (
 		<ProjectPicker

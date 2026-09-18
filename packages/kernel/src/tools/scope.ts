@@ -29,7 +29,7 @@ const READONLY_COMMANDS = new Set([
 	"type",
 	"command",
 ]);
-const PROTECTED_SEGMENTS = new Set([".git", ".ssh", ".gnupg"]);
+const PROTECTED_SEGMENTS = new Set([".git", ".ssh", ".gnupg", ".piruse"]);
 const PROTECTED_BASENAMES = new Set([
 	".gitconfig",
 	".gitmodules",
@@ -47,6 +47,9 @@ const PROTECTED_BASENAMES = new Set([
 	".envrc",
 	".netrc",
 	".npmrc",
+	"auth.json",
+	"master.key",
+	"credentials.enc",
 	"id_rsa",
 	"id_ed25519",
 	"id_ecdsa",
@@ -54,6 +57,7 @@ const PROTECTED_BASENAMES = new Set([
 	"authorized_keys",
 	"known_hosts",
 ]);
+const FILE_READERS = new Set(["cat", "head", "tail", "less", "more", "bat", "nl", "hexdump", "xxd", "od", "strings"]);
 const DEV_NULLS = new Set(["/dev/null", "/dev/stdout", "/dev/stderr", "nul"]);
 
 export type PathScope = "workspace" | "outside" | "protected";
@@ -86,6 +90,7 @@ export function isProtectedPath(cwd: string, target: string): boolean {
 	if (PROTECTED_BASENAMES.has(name) || isEnvFileName(name)) return true;
 	const home = homedir();
 	if (isInsideRoot(join(home, ".ssh"), abs) || isInsideRoot(join(home, ".gnupg"), abs)) return true;
+	if (isInsideRoot(join(home, ".pi"), abs) || isInsideRoot(join(home, ".piruse"), abs)) return true;
 	if (isInsideRoot(join(cwd, ".git"), abs)) return true;
 	return false;
 }
@@ -258,6 +263,31 @@ export function prefixMatches(command: string, prefixes: readonly string[]): boo
 		const rendered = unwrapTokens(tokenize(part)).join(" ");
 		return prefixes.some((prefix) => rendered === prefix || rendered.startsWith(`${prefix} `));
 	});
+}
+
+export function commandReadTargets(command: string): string[] {
+	const targets: string[] = [];
+	for (const part of splitShell(command)) {
+		const tokens = unwrapTokens(tokenize(part));
+		const name = tokens[0];
+		if (!name) continue;
+		const files =
+			name === "rg" || name === "grep"
+				? tokens.filter((token) => token.includes("/") || token.startsWith("~") || token.startsWith(".") || PROTECTED_BASENAMES.has(basename(token)))
+				: FILE_READERS.has(name)
+					? tokens.slice(1)
+					: [];
+		for (const token of files) {
+			if (token.startsWith("-")) continue;
+			if (name === "rg" || name === "grep") {
+				if (!token.includes("/") && !token.startsWith("~") && !token.startsWith(".") && !PROTECTED_BASENAMES.has(basename(token))) {
+					continue;
+				}
+			}
+			targets.push(token);
+		}
+	}
+	return targets;
 }
 
 export function redirectTargets(command: string): string[] {

@@ -12,6 +12,7 @@ export type {
 	ViewState,
 	ViewPackageStatus,
 	ViewPackageItem,
+	ThinkingLevel,
 	PermissionMode,
 	ApprovalReason,
 	ApprovalRemember,

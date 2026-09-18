@@ -2,17 +2,23 @@
  * Load pi's model catalog and credentials (~/.pi/agent/auth.json + settings.json).
  */
 
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
-import { type Api, type Model, type MutableModels, type Provider } from "@earendil-works/pi-ai";
+import {
+	type Api,
+	clampThinkingLevel,
+	getSupportedThinkingLevels,
+	type Model,
+	type MutableModels,
+	type Provider,
+} from "@earendil-works/pi-ai";
 import { builtinModels } from "@earendil-works/pi-ai/providers/all";
-import type { ViewModelOption, ViewProviderChoice, ViewProviderOption } from "../../../protocol/src/view.ts";
+import { isThinkingLevel, type ViewModelOption, type ViewProviderChoice, type ViewProviderOption } from "../../../protocol/src/view.ts";
 import { applyCustomCatalog } from "./apply-custom.ts";
 import { FileCredentialStore } from "./auth-store.ts";
 import { loadModelsJson, type ModelsJsonFile } from "./models-json.ts";
 import { agentPaths, resolveAgentDir, type AgentPaths } from "./paths.ts";
-
-const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
 
 export interface AgentSettings {
 	defaultProvider?: string;
@@ -36,10 +42,29 @@ export interface ResolveModelOptions {
 	model?: string;
 }
 
-function asThinkingLevel(value: unknown): ThinkingLevel | undefined {
-	return typeof value === "string" && (THINKING_LEVELS as readonly string[]).includes(value)
-		? (value as ThinkingLevel)
-		: undefined;
+export function asThinkingLevel(value: unknown): ThinkingLevel | undefined {
+	return isThinkingLevel(value) ? value : undefined;
+}
+
+export function clampModelThinking(model: Model<Api>, level: ThinkingLevel): ThinkingLevel {
+	return clampThinkingLevel(model, level) as ThinkingLevel;
+}
+
+export async function patchAgentSettings(path: string, patch: Partial<AgentSettings>): Promise<void> {
+	let record: Record<string, unknown> = {};
+	try {
+		const parsed: unknown = JSON.parse(await readFile(path, "utf8"));
+		if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+			record = { ...(parsed as Record<string, unknown>) };
+		}
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+	}
+	if (patch.defaultProvider !== undefined) record.defaultProvider = patch.defaultProvider;
+	if (patch.defaultModel !== undefined) record.defaultModel = patch.defaultModel;
+	if (patch.defaultThinkingLevel !== undefined) record.defaultThinkingLevel = patch.defaultThinkingLevel;
+	await mkdir(dirname(path), { recursive: true });
+	await writeFile(path, `${JSON.stringify(record, null, 2)}\n`, "utf8");
 }
 
 export async function loadAgentSettings(path: string): Promise<AgentSettings> {
@@ -158,7 +183,12 @@ export async function resolveConfiguredModel(options: ResolveModelOptions = {}):
 }
 
 export function toViewModel(model: Model<Api>): ViewModelOption {
-	return { provider: model.provider, modelId: model.id, name: model.name };
+	return {
+		provider: model.provider,
+		modelId: model.id,
+		name: model.name,
+		thinkingLevels: getSupportedThinkingLevels(model),
+	};
 }
 
 export async function listAvailableModels(

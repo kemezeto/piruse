@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import { ChevronRightIcon } from "tdesign-icons-react";
 import type { ViewItem } from "@protocol/view";
@@ -25,18 +25,31 @@ function Item({ item }: { item: ViewItem }) {
 		);
 	}
 	if (item.kind === "assistant") {
+		const thinkingLive = Boolean(item.thinkingStreaming);
+		const hasThinking = thinkingLive || Boolean(item.thinking);
+		const reply = Boolean(item.text) || (item.streaming && !thinkingLive);
+		const status = thinkingLive ? "正在思考…" : item.streaming ? "正在回复…" : null;
 		return (
 			<div className="turn assistant">
 				<div className="assistant-head">
 					<img className="assistant-avatar" src={logo} alt="" />
 					<div className="assistant-who">
 						<div className="assistant-name">piruse</div>
-						{item.streaming ? <div className="assistant-status">正在回复…</div> : null}
+						{status ? <div className="assistant-status">{status}</div> : null}
 					</div>
 				</div>
-				<div className="md">
-					<Markdown>{item.text || " "}</Markdown>
-				</div>
+				{hasThinking ? (
+					<ThinkingBlock
+						text={item.thinking ?? ""}
+						thinking={thinkingLive}
+						turnStreaming={Boolean(item.streaming)}
+					/>
+				) : null}
+				{reply ? (
+					<div className="md">
+						<Markdown>{item.text || " "}</Markdown>
+					</div>
+				) : null}
 			</div>
 		);
 	}
@@ -44,6 +57,43 @@ function Item({ item }: { item: ViewItem }) {
 		return <ToolCard item={item} />;
 	}
 	return <div className="note">{item.text}</div>;
+}
+
+function ThinkingBlock({
+	text,
+	thinking,
+	turnStreaming,
+}: {
+	text: string;
+	thinking: boolean;
+	turnStreaming: boolean;
+}) {
+	const bodyRef = useRef<HTMLPreElement>(null);
+	const [open, setOpen] = useState(thinking || turnStreaming);
+	useEffect(() => {
+		if (thinking) setOpen(true);
+	}, [thinking]);
+	useEffect(() => {
+		if (!thinking && !turnStreaming) setOpen(false);
+	}, [thinking, turnStreaming]);
+	useEffect(() => {
+		if (!open) return;
+		bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight });
+	}, [text, open]);
+	const label = thinking ? "正在思考" : "思考";
+	return (
+		<div className={`thinking${thinking ? " streaming" : ""}${open ? " is-open" : ""}`}>
+			<button type="button" className="thinking-toggle" aria-expanded={open} onClick={() => setOpen((current) => !current)}>
+				<span className="thinking-label">{label}</span>
+				<ChevronRightIcon size={14} className="caret thinking-caret" aria-hidden="true" />
+			</button>
+			{open ? (
+				<pre ref={bodyRef} className="thinking-body">
+					{text || (thinking ? "…" : "")}
+				</pre>
+			) : null}
+		</div>
+	);
 }
 
 function ToolCard({ item }: { item: Extract<ViewItem, { kind: "tool" }> }) {

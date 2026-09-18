@@ -1,4 +1,5 @@
 import type { AgentHarnessTool, ExecutionToolContext } from "@earendil-works/pi-agent-core";
+import type { PromptRuntime } from "../context/assemble.ts";
 import type { Skill } from "../skills/index.ts";
 import type { PermissionMode } from "../tools/policy.ts";
 
@@ -10,5 +11,5 @@ export interface AgentProfile {
 	title: string;
 	permissionDefault: PermissionMode;
 	tools: () => AgentHarnessTool<ExecutionToolContext>[];
-	systemPrompt: (cwd: string, skills?: readonly Skill[]) => string;
+	systemPrompt: (cwd: string, skills?: readonly Skill[], runtime?: PromptRuntime) => string;
 }

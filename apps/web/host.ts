@@ -212,6 +212,10 @@ wss.on("connection", (socket) => {
 					} else if (message.type === "setModel" && message.provider && message.modelId) {
 						await operator.setModel(message.provider, message.modelId);
 						meta = await loadMeta(operator);
+					} else if (message.type === "setThinkingLevel" && message.level) {
+						await operator.setThinkingLevel(message.level);
+						meta = await loadMeta(operator);
+						broadcast();
 					} else if (message.type === "openSession" && message.sessionId) {
 						dropWatches();
 						try {
