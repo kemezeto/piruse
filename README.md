@@ -110,7 +110,7 @@ Analyse 和 Coding 是同一套 kernel、同一份 `~/.piruse/sessions` jsonl。
 
 ## 结构
 
-浏览器只看到 `packages/protocol`。UI 禁止 import kernel。kernel 除 `runtime/` 外禁止 import `@earendil-works/pi-agent-core`。循环在 pi，piruse 只通过 `runtime/` 调用。
+浏览器只看到 `packages/protocol`。UI 禁止 import kernel。Web / CLI 只调 `bootHarness` / `Operator`。
 
 ```
 piruse/
@@ -118,23 +118,7 @@ piruse/
   pisource/                         # 只读：学 API，不当产品目录
   packages/
     protocol/                       # 过线合同（ViewState / commands）
-    kernel/                         # Agent 本体
-      src/
-        create-kernel.ts            # 组装根：models / session / skills / extensions / tools
-        assemble.ts                 # loadWorkspace + bindSession
-        harness.ts                  # Operator：会话操作、权限、订阅
-        runtime/                    # 唯一可 import pi-agent-core 的目录
-        session/                    # 打开、续写、列表、归档
-        tools/builtin/              # 一工具一文件
-        models/                     # 目录、鉴权、解析
-        packages/                   # 已装技能和扩展清单
-        extensions/                 # 加载已启用的扩展
-        skills/                     # 解析并注入系统提示
-        prompt/                     # 系统提示
-        context/                    # 本轮模型输入
-        compaction/                 # 窗口阈值（切点和摘要仍在 pi）
-        profile/                    # 人设（现在只有 coding）
-        memory/                     # 预留：internal / external
+    kernel/                         # Agent 本体，见下
   apps/
     flags.ts                        # cli / web 共用 argv
     cli/                            # 命令行入口
@@ -144,8 +128,44 @@ piruse/
   skills/                           # SKILL.md 内容，不是 TypeScript
 ```
 
-**同级（各改各的）：** session · tools · skills · extensions · models · prompt · memory · compaction · profile。换 jsonl 只动 session，加工具只动 `tools/builtin`，换默认模型只动 models。已装清单在 `packages/`。
+### packages/kernel
 
-**注入：** `create-kernel.ts` 组装 models、session、skills、extensions、tools，再交给 Operator。
+循环仍在 pi 的 `AgentHarness`。kernel 把它藏在 `runtime/` 后面，其余目录按职责切开，避免再出现一个谁都往里塞的上帝对象。
 
-当前有代码：`runtime/` · `assemble.ts` · `session/` · `tools/builtin/` · `models/` · `prompt/` · `compaction/` · `profile/` · `extensions/` · `skills/` · `packages/` · protocol。只留位置：`memory/` · `tools/mcp` · `apps/gateway` · `apps/desktop`。上面这张图是现状，不是终局；三大模块的实现还会再改。
+```
+packages/kernel/src/
+  index.ts                 # 对外：bootHarness / Operator / projectView
+  create-kernel.ts         # 组装根：boot 时接线
+  assemble.ts              # loadWorkspace + bindSession（boot 和换会话共用）
+  harness.ts               # Operator：prompt / 权限 / 订阅 / 换会话
+  view.ts / messages.ts    # lane 快照 → ViewState
+  hooks.ts                 # 权限门，不是扩展 hooks
+  loop.ts / events.ts      # 空位：循环和通知仍走 runtime / hooks
+  runtime/                 # 唯一可 import @earendil-works/pi-agent-core
+    pi.ts                  # 再导出 pi 类型和工厂
+    engine.ts              # 创建 env、jsonl repo、AgentHarness
+    watch.ts               # lane 事件 → ViewState / CLI token
+  session/                 # 打开、续写、列表、归档、Analyse 账本
+  tools/
+    builtin/               # 一工具一文件（read / write / edit / bash / grep / glob）
+    policy.ts              # 只读 / 审核 / 允许
+    mcp/                   # 预留
+  models/                  # 目录、鉴权、~/.pi/agent/auth.json
+  packages/                # 已装技能和扩展的清单、启用开关
+  skills/                  # 从清单抽出技能，写入系统提示
+  extensions/              # 加载已启用的扩展（工具、provider、子会话）
+  prompt/ + context/       # 系统提示；本轮模型输入
+  compaction/              # 窗口阈值（切点和摘要仍在 pi）
+  profile/                 # 人设（现在只有 coding）
+  memory/                  # 预留：internal / external
+```
+
+**为何这样切**
+
+1. **墙在 runtime。** apps 和 kernel 其他目录都不直接碰 `pi-agent-core`。升级 pi、换调用方式只改这一层。循环不重写。
+2. **组装和运行分开。** `create-kernel.ts` 在 boot 时把 models / session / skills / extensions / tools 拼好，交给 Operator。`assemble.ts` 给 boot 和换会话共用，避免接线抄两份。`harness.ts` 不再发现模块，只操作已经装上的东西。
+3. **同级模块各改各的。** 换 jsonl 只动 `session/`，加工具只动 `tools/builtin/`，换默认模型只动 `models/`。技能、扩展、工具目录分开，是因为发现 / 加载 / 调用本来就不是一件事。
+4. **`packages/` 不是第四个产品模块。** 技能和扩展共用 `~/.pi/agent` 里「装了什么、开没开」。清单放这里；`skills/` 只管注入提示，`extensions/` 只管加载工厂。以前揉在 `PackageHost` 里，改一处会碰到另外两处。
+5. **空目录先占位。** `memory/`、`tools/mcp`、`loop.ts` 标明还没接，避免以后再从 Operator 里往外拆一次。
+
+当前有代码：`runtime/` · `assemble.ts` · `session/` · `tools/builtin/` · `models/` · `prompt/` · `compaction/` · `profile/` · `extensions/` · `skills/` · `packages/`。只留位置：`memory/` · `tools/mcp`。三大模块的具体实现还会再改。
