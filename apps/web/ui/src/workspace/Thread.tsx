@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import Markdown from "react-markdown";
 import { ChevronRightIcon, TipsIcon } from "tdesign-icons-react";
 import type { ViewItem } from "@protocol/view";
+import { MarkdownBody } from "../markdown/MarkdownBody";
 import logo from "../view/logo.png";
 
 type ToolItem = Extract<ViewItem, { kind: "tool" }>;
@@ -102,7 +102,7 @@ function WorkLog({ items }: { items: Array<AssistantItem | ToolItem> }) {
 function Reply({ item }: { item: AssistantItem }) {
 	return (
 		<div className={`md${item.streaming && !item.thinkingStreaming ? " streaming" : ""}`}>
-			<Markdown>{item.text || " "}</Markdown>
+			<MarkdownBody text={item.text || " "} />
 		</div>
 	);
 }

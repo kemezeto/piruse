@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import Markdown from "react-markdown";
 import { ChevronRightIcon, CloseIcon, SearchIcon } from "tdesign-icons-react";
+import { MarkdownBody } from "../markdown/MarkdownBody";
 import type { ViewItem, ViewProjectOption } from "@protocol/view";
 import { basenameOf } from "../format";
 import {
@@ -268,7 +268,7 @@ function Turn({ turn }: { turn: InspectTurn }) {
 					<time>{formatClock(turn.at)}</time>
 				</header>
 				<div className="md">
-					<Markdown>{turn.text || " "}</Markdown>
+					<MarkdownBody text={turn.text || " "} />
 				</div>
 			</article>
 		);
