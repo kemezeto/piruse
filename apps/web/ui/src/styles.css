@@ -2312,6 +2312,55 @@ textarea {
 	);
 }
 
+.work-log {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 0.28rem;
+}
+
+.work-toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.32rem;
+	margin: 0;
+	padding: 0.2rem 0.55rem 0.2rem 0.28rem;
+	border: 0;
+	border-radius: 999px;
+	background: color-mix(in srgb, #16a34a 10%, var(--chip));
+	color: #3f7a4c;
+	font-size: 0.75rem;
+	font-weight: 650;
+	letter-spacing: 0.01em;
+	cursor: pointer;
+}
+
+.work-toggle:hover {
+	background: color-mix(in srgb, #16a34a 16%, var(--chip));
+	color: #2f6a3c;
+}
+
+.work-toggle .tool-mark {
+	width: 0.95rem;
+	height: 0.95rem;
+}
+
+.work-caret {
+	margin-left: 0.05rem;
+	color: color-mix(in srgb, #3f7a4c 70%, transparent);
+}
+
+.work-log.is-open .work-caret {
+	transform: rotate(90deg);
+}
+
+.work-log-body {
+	display: flex;
+	flex-direction: column;
+	gap: 0.32rem;
+	width: 100%;
+}
+
 .thinking {
 	margin: 0;
 	max-width: 100%;

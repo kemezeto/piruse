@@ -41,6 +41,7 @@ export function Thread({ items }: { items: ViewItem[] }) {
 
 function AgentTurn({ items }: { items: Array<AssistantItem | ToolItem> }) {
 	const status = agentStatus(items);
+	const parts = streamParts(items);
 	return (
 		<div className="turn assistant">
 			<div className="assistant-head">
@@ -55,27 +56,54 @@ function AgentTurn({ items }: { items: Array<AssistantItem | ToolItem> }) {
 				</div>
 			</div>
 			<div className="agent-stream">
-				{items.map((item) =>
-					item.kind === "assistant" ? <AssistantBody key={item.id} item={item} /> : <ToolRow key={item.id} item={item} />,
+				{parts.map((part) =>
+					part.kind === "work" ? (
+						<WorkLog key={part.key} items={part.items} />
+					) : (
+						<Reply key={part.item.id} item={part.item} />
+					),
 				)}
 			</div>
 		</div>
 	);
 }
 
-function AssistantBody({ item }: { item: AssistantItem }) {
-	const thinkingLive = Boolean(item.thinkingStreaming);
-	const hasThinking = thinkingLive || Boolean(item.thinking);
-	const reply = Boolean(item.text) || (item.streaming && !thinkingLive);
+function WorkLog({ items }: { items: Array<AssistantItem | ToolItem> }) {
+	const live = workLive(items);
+	const [open, setOpen] = useState(live);
+	useEffect(() => {
+		setOpen(live);
+	}, [live]);
+	const duration = formatToolMs(workDurationMs(items));
 	return (
-		<>
-			{hasThinking ? <ThinkingBlock text={item.thinking ?? ""} thinking={thinkingLive} /> : null}
-			{reply ? (
-				<div className={`md${item.streaming && !thinkingLive ? " streaming" : ""}`}>
-					<Markdown>{item.text || " "}</Markdown>
+		<div className={`work-log${open ? " is-open" : ""}${live ? " live" : ""}`}>
+			{live ? null : (
+				<button type="button" className="work-toggle" aria-expanded={open} onClick={() => setOpen((current) => !current)}>
+					<i className="tool-mark ok" aria-hidden="true" />
+					<span className="work-label">{duration ? `已完成 ${duration}` : "已完成"}</span>
+					<ChevronRightIcon size={14} className="caret work-caret" aria-hidden="true" />
+				</button>
+			)}
+			{open ? (
+				<div className="work-log-body">
+					{items.map((item) =>
+						item.kind === "tool" ? (
+							<ToolRow key={item.id} item={item} />
+						) : hasThinking(item) ? (
+							<ThinkingBlock key={item.id} text={item.thinking ?? ""} thinking={Boolean(item.thinkingStreaming)} />
+						) : null,
+					)}
 				</div>
 			) : null}
-		</>
+		</div>
+	);
+}
+
+function Reply({ item }: { item: AssistantItem }) {
+	return (
+		<div className={`md${item.streaming && !item.thinkingStreaming ? " streaming" : ""}`}>
+			<Markdown>{item.text || " "}</Markdown>
+		</div>
 	);
 }
 
@@ -150,6 +178,60 @@ function groupThread(items: ViewItem[]): ThreadBlock[] {
 		else blocks.push({ kind: "agent", items: [item] });
 	}
 	return blocks;
+}
+
+type StreamPart =
+	| { kind: "work"; key: string; items: Array<AssistantItem | ToolItem> }
+	| { kind: "reply"; item: AssistantItem };
+
+function streamParts(items: Array<AssistantItem | ToolItem>): StreamPart[] {
+	const parts: StreamPart[] = [];
+	let work: Array<AssistantItem | ToolItem> = [];
+	const flush = (): void => {
+		if (work.length === 0) return;
+		parts.push({ kind: "work", key: work[0]!.id, items: work });
+		work = [];
+	};
+	for (const item of items) {
+		if (item.kind === "tool") {
+			work.push(item);
+			continue;
+		}
+		if (hasThinking(item)) work.push(item);
+		if (hasReply(item)) {
+			flush();
+			parts.push({ kind: "reply", item });
+		}
+	}
+	flush();
+	return parts;
+}
+
+function hasThinking(item: AssistantItem): boolean {
+	return Boolean(item.thinkingStreaming) || Boolean(item.thinking);
+}
+
+function hasReply(item: AssistantItem): boolean {
+	return Boolean(item.text) || (Boolean(item.streaming) && !item.thinkingStreaming);
+}
+
+function workLive(items: Array<AssistantItem | ToolItem>): boolean {
+	return items.some(
+		(item) => (item.kind === "tool" && item.running) || (item.kind === "assistant" && item.thinkingStreaming),
+	);
+}
+
+function workDurationMs(items: Array<AssistantItem | ToolItem>): number | undefined {
+	const points: number[] = [];
+	let toolSum = 0;
+	for (const item of items) {
+		if (item.kind === "tool") toolSum += item.durationMs ?? 0;
+		if (item.at == null) continue;
+		points.push(item.at);
+		if (item.kind === "tool" && item.durationMs != null) points.push(item.at - item.durationMs);
+	}
+	if (points.length >= 2) return Math.max(0, Math.max(...points) - Math.min(...points));
+	return toolSum > 0 ? toolSum : undefined;
 }
 
 function agentStatus(items: Array<AssistantItem | ToolItem>): string | null {
