@@ -1,2 +1,2 @@
-/** Passive notifications for UI. Do not merge with hooks.ts. */
+/** Passive UI notifications. Permission and extension hooks stay in `hooks.ts`. */
 export {};

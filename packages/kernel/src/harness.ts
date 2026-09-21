@@ -13,23 +13,10 @@ import type {
 	ViewSessionOption,
 	ViewState,
 } from "../../protocol/src/view.ts";
-import {
-	type AgentHarness,
-	type AgentLane,
-	BACKGROUND_CONTEXT,
-	type Context,
-	createExecutionEnv,
-	createHarness,
-	createSessionRepo,
-	type JsonlSessionMetadata,
-	type JsonlSessionRepo,
-	type NodeExecutionEnv,
-	type OpenOperation,
-	type Session,
-	type ThinkingLevel,
-} from "./runtime/index.ts";
-import { subscribeLaneRun, subscribeLaneView, type RunHandlers, type ViewSubscription } from "./runtime/watch.ts";
-import { compactionSettings } from "./compaction/settings.ts";
+import { bindSession, type BoundSession, loadWorkspace, type LiveConfig } from "./assemble.ts";
+import { ExtensionHost } from "./extensions/index.ts";
+import { asAgentMessage, customTypeOf, toJsonValue } from "./extensions/runtime.ts";
+import { PermissionGate } from "./hooks.ts";
 import { userText } from "./messages.ts";
 import { FileCredentialStore } from "./models/auth-store.ts";
 import { applyCustomCatalog } from "./models/apply-custom.ts";
@@ -39,14 +26,26 @@ import {
 	listAvailableModels,
 	listProviderCatalog,
 	patchAgentSettings,
-	resolveConfiguredModel,
 } from "./models/index.ts";
 import { loadModelsJson, saveModelsJson, type ModelsJsonModel } from "./models/models-json.ts";
 import type { AgentPaths } from "./models/paths.ts";
+import { packageStatus as viewPackages, setResourceEnabled, type InstalledResources } from "./packages/index.ts";
+import type { AgentProfile } from "./profile/index.ts";
+import {
+	type AgentHarness,
+	type AgentLane,
+	type Context,
+	type JsonlSessionMetadata,
+	type JsonlSessionRepo,
+	type NodeExecutionEnv,
+	type OpenOperation,
+	type Session,
+	type ThinkingLevel,
+} from "./runtime/index.ts";
+import { subscribeLaneRun, subscribeLaneView, type RunHandlers, type ViewSubscription } from "./runtime/watch.ts";
 import { loadAnalyseSnapshot } from "./session/analyse.ts";
 import { isArchived, readArchiveIndex, writeArchiveIndex } from "./session/archive.ts";
-import { openFirstReadable, openInitialSession, shortId } from "./session/open.ts";
-import { readPermissionMode } from "./session/permissions.ts";
+import { openFirstReadable, shortId } from "./session/open.ts";
 import {
 	discoverTitleFromJsonl,
 	displayTitle,
@@ -60,28 +59,29 @@ import {
 	resolveProjectDirectory,
 	writeLastProject,
 } from "./session/projects.ts";
-import { resolveProfile, type AgentProfile, type AgentProfileId } from "./profile/index.ts";
+import type { Skill } from "./skills/index.ts";
 import { isPermissionMode, type PermissionMode } from "./tools/policy.ts";
-import { installPermissionHooks, PermissionGate } from "./hooks.ts";
-import { PackageHost } from "./extensions/index.ts";
-import { asAgentMessage, customTypeOf, toJsonValue } from "./extensions/runtime.ts";
-import { setResourceEnabled } from "./packages/enable.ts";
-
-export interface BootOptions {
-	cwd: string;
-	sessionsRoot: string;
-	sessionId?: string;
-	continueSession?: boolean;
-	resumeLatest?: boolean;
-	provider?: string;
-	model?: string;
-	agentDir?: string;
-	profileId?: AgentProfileId;
-	permissionMode?: PermissionMode;
-	interactiveApprovals?: boolean;
-}
 
 export type { RunHandlers, ViewSubscription };
+
+export interface OperatorOpen {
+	context: Context;
+	cwd: string;
+	models: MutableModels;
+	authSource: string | undefined;
+	repo: JsonlSessionRepo;
+	sessionsRoot: string;
+	executionEnv: NodeExecutionEnv;
+	credentials: FileCredentialStore;
+	paths: AgentPaths;
+	originals: Map<string, Provider>;
+	permissions: PermissionGate;
+	profile: AgentProfile;
+	extensions: ExtensionHost;
+	inventory: InstalledResources;
+	skills: Skill[];
+	bound: BoundSession;
+}
 
 export interface BootedHarness {
 	cwd: string;
@@ -135,11 +135,6 @@ export interface BootedHarness {
 	isRunning(): Promise<boolean>;
 }
 
-interface LiveConfig {
-	model: { provider: string; id: string };
-	thinkingLevel: ThinkingLevel;
-}
-
 export class Operator implements BootedHarness {
 	cwd: string;
 	model: { provider: string; id: string };
@@ -149,6 +144,8 @@ export class Operator implements BootedHarness {
 	private lane: AgentLane;
 	private open: OpenOperation[];
 	private live: LiveConfig;
+	private inventory: InstalledResources;
+	private skills: Skill[];
 
 	private constructor(
 		private readonly context: Context,
@@ -163,14 +160,9 @@ export class Operator implements BootedHarness {
 		private readonly originals: Map<string, Provider>,
 		private readonly permissions: PermissionGate,
 		readonly profile: AgentProfile,
-		private readonly packages: PackageHost,
-		bound: {
-			session: Session<JsonlSessionMetadata>;
-			harness: AgentHarness;
-			lane: AgentLane;
-			open: OpenOperation[];
-			live: LiveConfig;
-		},
+		private readonly extensions: ExtensionHost,
+		bound: BoundSession,
+		workspace: { inventory: InstalledResources; skills: Skill[] },
 	) {
 		this.cwd = cwd;
 		this.session = bound.session;
@@ -180,6 +172,8 @@ export class Operator implements BootedHarness {
 		this.live = bound.live;
 		this.model = bound.live.model;
 		this.thinkingLevel = bound.live.thinkingLevel;
+		this.inventory = workspace.inventory;
+		this.skills = workspace.skills;
 	}
 
 	get sessionId(): string {
@@ -194,129 +188,27 @@ export class Operator implements BootedHarness {
 		return this.open.map((operation) => `${operation.lane}/${operation.operationId}`);
 	}
 
-	static async boot(options: BootOptions): Promise<Operator> {
-		const context = BACKGROUND_CONTEXT;
-		const configured = await resolveConfiguredModel({
-			agentDir: options.agentDir,
-			provider: options.provider,
-			model: options.model,
-		});
-		const executionEnv = createExecutionEnv(options.cwd);
-		const bootCwd = await resolveProjectDirectory(executionEnv, options.cwd, context);
-		executionEnv.cwd = bootCwd;
-		const repo = createSessionRepo(executionEnv, options.sessionsRoot);
-		const archived = await readArchiveIndex(options.sessionsRoot);
-		const session = await openInitialSession(
-			repo,
-			{ ...options, cwd: bootCwd, usable: (id) => !isArchived(archived, id) },
-			context,
-		);
-		const cwd = session.metadata.cwd;
-		executionEnv.cwd = cwd;
-		const profile = resolveProfile(options.profileId);
-		const interactive = options.interactiveApprovals === true;
-		const stored = interactive ? await readPermissionMode(options.sessionsRoot, cwd) : undefined;
-		const mode = options.permissionMode ?? stored ?? (interactive ? profile.permissionDefault : "allow");
-		const packages = new PackageHost();
-		await packages.load({ cwd, agentDir: configured.paths.dir, models: configured.models });
-		const gate = new PermissionGate(
-			options.sessionsRoot,
-			cwd,
-			interactive,
-			mode,
-			() => [...profile.tools(), ...packages.tools()].map((tool) => tool.name),
-			profile.permissionDefault,
-		);
-		await gate.restoreGrants();
-		const bound = await Operator.bindSession(
-			context,
-			cwd,
-			configured.models,
-			configured.model,
-			configured.thinkingLevel,
-			executionEnv,
-			session,
-			gate,
-			profile,
-			packages,
-		);
+	static async open(input: OperatorOpen): Promise<Operator> {
 		const operator = new Operator(
-			context,
-			cwd,
-			configured.models,
-			configured.authSource,
-			repo,
-			options.sessionsRoot,
-			executionEnv,
-			configured.credentials,
-			configured.paths,
-			configured.originals,
-			gate,
-			profile,
-			packages,
-			bound,
+			input.context,
+			input.cwd,
+			input.models,
+			input.authSource,
+			input.repo,
+			input.sessionsRoot,
+			input.executionEnv,
+			input.credentials,
+			input.paths,
+			input.originals,
+			input.permissions,
+			input.profile,
+			input.extensions,
+			input.bound,
+			{ inventory: input.inventory, skills: input.skills },
 		);
 		await operator.ensureTitle();
 		operator.syncExtensionRuntime();
 		return operator;
-	}
-
-	private static async bindSession(
-		context: Context,
-		cwd: string,
-		models: MutableModels,
-		model: { provider: string; id: string },
-		thinkingLevel: ThinkingLevel,
-		executionEnv: NodeExecutionEnv,
-		session: Session<JsonlSessionMetadata>,
-		permissions: PermissionGate,
-		profile: AgentProfile,
-		packages: PackageHost,
-	): Promise<{
-		session: Session<JsonlSessionMetadata>;
-		harness: AgentHarness;
-		lane: AgentLane;
-		open: OpenOperation[];
-		live: LiveConfig;
-	}> {
-		const catalogModel = models.getModel(model.provider, model.id);
-		if (!catalogModel) throw new Error(`Unknown model ${model.provider}/${model.id}`);
-		const live: LiveConfig = {
-			model: { provider: catalogModel.provider, id: catalogModel.id },
-			thinkingLevel: clampModelThinking(catalogModel, thinkingLevel),
-		};
-		const { harness, open } = await createHarness(
-			{
-				session,
-				models,
-				model: catalogModel,
-				thinkingLevel: live.thinkingLevel,
-				tools: [...profile.tools(), ...packages.tools()],
-				toolContext: { env: executionEnv },
-				systemPrompt: () =>
-					profile.systemPrompt(executionEnv.cwd, packages.skills(), {
-						provider: live.model.provider,
-						modelId: live.model.id,
-						thinkingLevel: live.thinkingLevel,
-					}),
-				compaction: compactionSettings,
-			},
-			context,
-		);
-		installPermissionHooks(harness, permissions);
-		packages.installHooks(harness);
-		const lane = await harness.lane("main", context);
-		await permissions.applyTools(lane, context);
-		const currentModel = await lane.getModel(context);
-		const liveModel = currentModel ? models.getModel(currentModel.provider, currentModel.id) ?? catalogModel : catalogModel;
-		const liveThinking = await lane.getThinkingLevel(context);
-		const nextThinking = clampModelThinking(liveModel, liveThinking);
-		if (nextThinking !== liveThinking) await lane.setThinkingLevel(nextThinking, context);
-		live.model = currentModel
-			? { provider: currentModel.provider, id: currentModel.id }
-			: { provider: model.provider, id: model.id };
-		live.thinkingLevel = nextThinking;
-		return { session, harness, lane, open, live };
 	}
 
 	async listModels(): Promise<ViewModelOption[]> {
@@ -424,7 +316,10 @@ export class Operator implements BootedHarness {
 	}
 
 	packageStatus(): ViewPackageStatus {
-		return this.packages.view();
+		return viewPackages(this.inventory, {
+			diagnostics: this.extensions.diagnostics(),
+			unsupported: this.extensions.unsupported(),
+		});
 	}
 
 	async setSkillEnabled(id: string, enabled: boolean): Promise<void> {
@@ -650,6 +545,16 @@ export class Operator implements BootedHarness {
 		return listed.filter((entry) => !isArchived(index, entry.id));
 	}
 
+	private applyBound(bound: BoundSession): void {
+		this.session = bound.session;
+		this.harness = bound.harness;
+		this.lane = bound.lane;
+		this.open = bound.open;
+		this.live = bound.live;
+		this.model = bound.live.model;
+		this.thinkingLevel = bound.live.thinkingLevel;
+	}
+
 	private applyCwd(cwd: string): void {
 		this.cwd = cwd;
 		this.executionEnv.cwd = cwd;
@@ -666,26 +571,28 @@ export class Operator implements BootedHarness {
 		try {
 			const session = await open();
 			this.applyCwd(session.metadata.cwd);
-			await this.packages.load({ cwd: this.cwd, agentDir: this.paths.dir, models: this.models });
-			const bound = await Operator.bindSession(
-				this.context,
-				this.cwd,
-				this.models,
-				this.model,
-				this.thinkingLevel,
-				this.executionEnv,
+			const workspace = await loadWorkspace({
+				cwd: this.cwd,
+				agentDir: this.paths.dir,
+				models: this.models,
+				extensions: this.extensions,
+			});
+			this.inventory = workspace.inventory;
+			this.skills = workspace.skills;
+			const bound = await bindSession({
+				context: this.context,
+				cwd: this.cwd,
+				models: this.models,
+				model: this.model,
+				thinkingLevel: this.thinkingLevel,
+				executionEnv: this.executionEnv,
 				session,
-				this.permissions,
-				this.profile,
-				this.packages,
-			);
-			this.session = bound.session;
-			this.harness = bound.harness;
-			this.lane = bound.lane;
-			this.open = bound.open;
-			this.live = bound.live;
-			this.model = bound.live.model;
-			this.thinkingLevel = bound.live.thinkingLevel;
+				permissions: this.permissions,
+				profile: this.profile,
+				skills: this.skills,
+				extensions: this.extensions,
+			});
+			this.applyBound(bound);
 			await this.permissions.loadForCwd(this.cwd, this.context, this.lane);
 			await this.resumeOpen();
 			await this.ensureTitle();
@@ -693,27 +600,29 @@ export class Operator implements BootedHarness {
 			this.syncExtensionRuntime();
 		} catch (error) {
 			this.applyCwd(previous.cwd);
-			await this.packages.load({ cwd: this.cwd, agentDir: this.paths.dir, models: this.models });
+			const workspace = await loadWorkspace({
+				cwd: this.cwd,
+				agentDir: this.paths.dir,
+				models: this.models,
+				extensions: this.extensions,
+			});
+			this.inventory = workspace.inventory;
+			this.skills = workspace.skills;
 			const fallback = await this.repo.open(previous, this.context);
-			const bound = await Operator.bindSession(
-				this.context,
-				this.cwd,
-				this.models,
-				this.model,
-				this.thinkingLevel,
-				this.executionEnv,
-				fallback,
-				this.permissions,
-				this.profile,
-				this.packages,
-			);
-			this.session = bound.session;
-			this.harness = bound.harness;
-			this.lane = bound.lane;
-			this.open = bound.open;
-			this.live = bound.live;
-			this.model = bound.live.model;
-			this.thinkingLevel = bound.live.thinkingLevel;
+			const bound = await bindSession({
+				context: this.context,
+				cwd: this.cwd,
+				models: this.models,
+				model: this.model,
+				thinkingLevel: this.thinkingLevel,
+				executionEnv: this.executionEnv,
+				session: fallback,
+				permissions: this.permissions,
+				profile: this.profile,
+				skills: this.skills,
+				extensions: this.extensions,
+			});
+			this.applyBound(bound);
 			await this.permissions.loadForCwd(this.cwd, this.context, this.lane);
 			this.syncExtensionRuntime();
 			throw error;
@@ -824,7 +733,7 @@ export class Operator implements BootedHarness {
 	}
 
 	private syncExtensionRuntime(): void {
-		this.packages.bindRuntime({
+		this.extensions.bindRuntime({
 			cwd: this.cwd,
 			sessionId: this.session.metadata.id,
 			sessionFile: this.session.metadata.path,
@@ -832,7 +741,7 @@ export class Operator implements BootedHarness {
 			model: this.model,
 			thinkingLevel: this.thinkingLevel,
 			profile: this.profile,
-			skills: this.packages.skills(),
+			skills: this.skills,
 			sessionsRoot: this.sessionsRoot,
 			context: this.context,
 			isIdle: () => true,
@@ -860,7 +769,7 @@ export class Operator implements BootedHarness {
 
 	async close(): Promise<void> {
 		this.permissions.rejectAll("Closed");
-		this.packages.unload();
+		this.extensions.unload();
 		await this.harness.close(this.context).catch(() => {});
 		await this.repo.close(this.context).catch(() => {});
 		await this.executionEnv.cleanup(this.context).catch(() => {});

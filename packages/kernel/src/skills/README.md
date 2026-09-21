@@ -2,6 +2,8 @@
 
 Discover SKILL.md from official Pi user-level directories and inject name/description into the system prompt.
 
+Boot uses `skillsFromResources` on the `packages/` inventory so enable/disable matches settings. `loadUserSkills` is the same mapping plus optional extra paths.
+
 Sources (no project `.pi/` until piruse has trust):
 
 - `~/.pi/agent/skills`

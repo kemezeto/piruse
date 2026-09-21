@@ -65,9 +65,17 @@ export function formatSkillsForPrompt(skills: Skill[], fileReadTool: "read" | "b
 	return lines.join("\n");
 }
 
-export async function loadUserSkills(options: LoadSkillsOptions): Promise<LoadSkillsResult> {
-	const listed = await listInstalledResources({ cwd: options.cwd, agentDir: options.agentDir });
-	const skills = listed.skills
+export function skillsFromResources(
+	resources: Array<{
+		name: string;
+		description?: string;
+		path: string;
+		baseDir: string;
+		enabled: boolean;
+		disableModelInvocation?: boolean;
+	}>,
+): Skill[] {
+	return resources
 		.filter((skill) => skill.enabled)
 		.map((skill) => ({
 			name: skill.name,
@@ -76,6 +84,11 @@ export async function loadUserSkills(options: LoadSkillsOptions): Promise<LoadSk
 			baseDir: skill.baseDir,
 			disableModelInvocation: skill.disableModelInvocation === true,
 		}));
+}
+
+export async function loadUserSkills(options: LoadSkillsOptions): Promise<LoadSkillsResult> {
+	const listed = await listInstalledResources({ cwd: options.cwd, agentDir: options.agentDir });
+	const skills = skillsFromResources(listed.skills);
 	if (!options.skillPaths?.length) return { skills, diagnostics: [] };
 	const extra = loadSkillsSync({
 		cwd: options.cwd,

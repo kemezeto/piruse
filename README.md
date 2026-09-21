@@ -74,11 +74,11 @@ npm start -- --model deepseek/deepseek-v4-flash "…"
 
 ## 还要改
 
-整体循环已经能跑通，后面不会大动。这几处实现还不行，之后会改：
+整体循环已经能跑通，后面不会大动。
 
 1. **技能、扩展、工具** 三大模块：现在能发现 / 加载 / 调用，但具体实现有问题，边界、启用方式和跟 kernel 的接法都不干净。
-2. **文件布局**：系统架构和目录切分还要再收。职责散、边界糊，之后会重新排。
-3. **引入 pi-agent 的方案**：现在对 pi 的依赖切法不够好，之后会换成更干净的接法。
+2. **文件布局**：kernel 已按 runtime 墙切开组装根；三大模块的实现还会再改。
+3. **引入 pi-agent 的方案**：循环仍用 `AgentHarness`。`pi-agent-core` 只从 `runtime/` 进入，apps 只跟 `Operator` 说话。
 
 ## Analyse 看板：哪些数据接得上
 
@@ -120,14 +120,16 @@ piruse/
     protocol/                       # 过线合同（ViewState / commands）
     kernel/                         # Agent 本体
       src/
-        create-kernel.ts            # 唯一组装根
-        harness.ts                  # 绑定 session、lane、resume
+        create-kernel.ts            # 组装根：models / session / skills / extensions / tools
+        assemble.ts                 # loadWorkspace + bindSession
+        harness.ts                  # Operator：会话操作、权限、订阅
         runtime/                    # 唯一可 import pi-agent-core 的目录
         session/                    # 打开、续写、列表、归档
         tools/builtin/              # 一工具一文件
         models/                     # 目录、鉴权、解析
-        extensions/                 # 加载 ~/.pi 里已安装的扩展
-        skills/                     # 发现 / 解析 / 注入
+        packages/                   # 已装技能和扩展清单
+        extensions/                 # 加载已启用的扩展
+        skills/                     # 解析并注入系统提示
         prompt/                     # 系统提示
         context/                    # 本轮模型输入
         compaction/                 # 窗口阈值（切点和摘要仍在 pi）
@@ -142,8 +144,8 @@ piruse/
   skills/                           # SKILL.md 内容，不是 TypeScript
 ```
 
-**同级（各改各的）：** session · tools · skills · models · prompt · memory · compaction · profile。换 jsonl 只动 session，加工具只动 `tools/builtin`，换默认模型只动 models。
+**同级（各改各的）：** session · tools · skills · extensions · models · prompt · memory · compaction · profile。换 jsonl 只动 session，加工具只动 `tools/builtin`，换默认模型只动 models。已装清单在 `packages/`。
 
-**注入：** models、tools、skills、profile 由 `create-kernel.ts` 交给 harness。
+**注入：** `create-kernel.ts` 组装 models、session、skills、extensions、tools，再交给 Operator。
 
-当前有代码：`runtime/` · `session/` · `tools/builtin/` · `models/` · `prompt/` · `compaction/` · `profile/` · `extensions/` · protocol。只留位置：`memory/` · `tools/mcp` · `apps/gateway` · `apps/desktop`。上面这张图是现状，不是终局；布局和三大模块还会再改。
+当前有代码：`runtime/` · `assemble.ts` · `session/` · `tools/builtin/` · `models/` · `prompt/` · `compaction/` · `profile/` · `extensions/` · `skills/` · `packages/` · protocol。只留位置：`memory/` · `tools/mcp` · `apps/gateway` · `apps/desktop`。上面这张图是现状，不是终局；三大模块的实现还会再改。
