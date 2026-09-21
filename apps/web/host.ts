@@ -1,6 +1,7 @@
 /**
  * Local operator window. Binds 127.0.0.1 only. The browser never sees the harness.
  * Model keys come from ~/.pi/agent/auth.json (same file as pi), then provider env vars.
+ * Missing keys still start the window so they can be added in Settings.
  *
  *   npm run web                          # resume latest unarchived chat for this project
  *   npm run web -- --cwd ~/code/other

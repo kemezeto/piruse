@@ -706,6 +706,10 @@ export class Operator implements BootedHarness {
 	}
 
 	async prompt(text: string): Promise<void> {
+		const authed = await this.models.checkAuth(this.model.provider);
+		if (!authed) {
+			throw new Error("还没有可用的模型密钥。请先在设置里添加密钥并选择模型。");
+		}
 		const result = await this.lane.prompt(text, undefined, this.context);
 		if (!result.ok) throw new Error(result.error.message);
 	}

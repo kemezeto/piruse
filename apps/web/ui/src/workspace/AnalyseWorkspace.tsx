@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import type { AnalyseSnapshot } from "@protocol/analyse";
 import type { ViewItem, ViewModelOption, ViewProjectOption } from "@protocol/view";
-import { Activity } from "../analyse/Activity";
+import { Activity } from "../analyse/Activity.tsx";
 import { DataTable } from "../analyse/Data";
 import { Overview } from "../analyse/Overview";
-import { Quality } from "../analyse/Quality";
+import { Quality } from "../analyse/Quality.tsx";
 import { SessionInspect } from "../analyse/SessionInspect";
-import { Usage } from "../analyse/Usage";
+import { Usage } from "../analyse/Usage.tsx";
 
 const TABS = [
 	{ id: "overview", label: "概览" },

@@ -156,18 +156,16 @@ export async function resolveConfiguredModel(options: ResolveModelOptions = {}):
 			settings.defaultProvider && settings.defaultModel
 				? models.getModel(settings.defaultProvider, settings.defaultModel)
 				: undefined;
-		selected = (await firstAvailable(models, preferred)) ?? preferred;
+		selected = (await firstAvailable(models, preferred)) ?? preferred ?? catalog[0];
 	}
 	if (!selected) {
-		throw new Error(
-			`No model is configured. Add a key in ${paths.auth} (same file as pi), set a provider env var, or pass --model.`,
-		);
+		throw new Error("The model catalog is empty.");
 	}
 
 	const auth = await models.getAuth(selected.provider).catch(() => undefined);
 	if (!auth) {
 		console.error(
-			`Warning: ${selected.provider} has no stored credential or env key. Prompts will fail until ${paths.auth} or a provider env var is set.`,
+			`Warning: ${selected.provider} has no API key. Starting anyway; add a key in Settings, ${paths.auth}, or a provider env var before sending a prompt.`,
 		);
 	}
 
@@ -198,7 +196,12 @@ export async function listAvailableModels(
 	const available = [...(await models.getAvailable())];
 	if (current) {
 		const selected = models.getModel(current.provider, current.id);
-		if (selected && !available.some((model) => model.provider === selected.provider && model.id === selected.id)) {
+		const authed = selected ? await models.checkAuth(selected.provider) : false;
+		if (
+			selected &&
+			authed &&
+			!available.some((model) => model.provider === selected.provider && model.id === selected.id)
+		) {
 			available.unshift(selected);
 		}
 	}

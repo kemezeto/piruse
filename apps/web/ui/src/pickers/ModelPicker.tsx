@@ -29,11 +29,14 @@ export function ModelPicker({
 			variant="inline"
 			label="模型"
 			icon={<Robot2Icon size={14} />}
-			value={models.find((model) => model.provider === current.provider && model.modelId === current.modelId)?.name ?? current.modelId}
+			value={
+				models.find((model) => model.provider === current.provider && model.modelId === current.modelId)?.name ??
+				"未配置"
+			}
 		>
 			{(close) => (
 				<div className="popover-list" role="listbox" aria-label="Models">
-					{groups.length === 0 ? <p className="popover-empty">No matching models</p> : null}
+					{groups.length === 0 ? <p className="popover-empty">还没有可用模型，请先在设置里添加密钥。</p> : null}
 					{groups.map(([provider, entries]) => (
 						<div key={provider} className="popover-group">
 							<div className="popover-group-label">{provider}</div>

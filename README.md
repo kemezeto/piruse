@@ -35,7 +35,7 @@ Agent 本体是 `packages/kernel`。Web / CLI 是调用方。模型目录和密�
 ## 要求
 
 - Node.js ≥ 22.19
-- 至少一个模型密钥：写在 `~/.pi/agent/auth.json`，或设置对应 provider 的环境变量
+- 模型密钥可以后补：写在 `~/.pi/agent/auth.json`、设置对应 provider 的环境变量，或启动后在网页设置里填写
 
 ```bash
 npm install
