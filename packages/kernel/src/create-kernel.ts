@@ -67,19 +67,21 @@ export async function bootHarness(options: BootOptions): Promise<Operator> {
 		profile.permissionDefault,
 	);
 	await gate.restoreGrants();
-	const bound = await bindSession({
-		context,
-		cwd,
-		models: configured.models,
-		model: configured.model,
-		thinkingLevel: configured.thinkingLevel,
-		executionEnv,
-		session,
-		permissions: gate,
-		profile,
-		skills: workspace.skills,
-		extensions,
-	});
+	const bound = configured.model
+		? await bindSession({
+				context,
+				cwd,
+				models: configured.models,
+				model: configured.model,
+				thinkingLevel: configured.thinkingLevel,
+				executionEnv,
+				session,
+				permissions: gate,
+				profile,
+				skills: workspace.skills,
+				extensions,
+			})
+		: undefined;
 	return Operator.open({
 		context,
 		cwd,
@@ -96,6 +98,8 @@ export async function bootHarness(options: BootOptions): Promise<Operator> {
 		extensions,
 		inventory: workspace.inventory,
 		skills: workspace.skills,
+		session,
+		thinkingLevel: configured.thinkingLevel,
 		bound,
 	});
 }

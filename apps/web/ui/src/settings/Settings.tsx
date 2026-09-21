@@ -26,6 +26,7 @@ export function SettingsDialog({
 	open,
 	providers,
 	choices,
+	current,
 	sessions,
 	archivedSessions,
 	currentSessionId,
@@ -38,6 +39,7 @@ export function SettingsDialog({
 	open: boolean;
 	providers: ViewProviderOption[];
 	choices: ViewProviderChoice[];
+	current: { provider: string; modelId: string } | null;
 	sessions: ViewSessionOption[];
 	archivedSessions: ViewArchivedSession[];
 	currentSessionId: string;
@@ -108,7 +110,7 @@ export function SettingsDialog({
 							onCommand={onCommand}
 						/>
 					) : (
-						<ModelsPane providers={providers} choices={choices} onCommand={onCommand} />
+						<ModelsPane providers={providers} choices={choices} current={current} onCommand={onCommand} />
 					)}
 				</div>
 			</div>

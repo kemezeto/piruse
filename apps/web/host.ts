@@ -95,6 +95,8 @@ async function loadMeta(current: Operator): Promise<ViewMeta> {
 		permissionMode: current.permissionMode(),
 		pendingApprovals: current.pendingApprovals(),
 		packages: current.packageStatus(),
+		model: current.model ? { provider: current.model.provider, modelId: current.model.id } : null,
+		thinkingLevel: current.thinkingLevel,
 	};
 }
 
@@ -201,8 +203,12 @@ wss.on("connection", (socket) => {
 						meta = await loadMeta(operator);
 						broadcast();
 					} else if (message.type === "setModel" && message.provider && message.modelId) {
-						await operator.setModel(message.provider, message.modelId);
-						meta = await loadMeta(operator);
+						dropWatches();
+						try {
+							await operator.setModel(message.provider, message.modelId);
+						} finally {
+							await rebind();
+						}
 					} else if (message.type === "setThinkingLevel" && message.level) {
 						await operator.setThinkingLevel(message.level);
 						meta = await loadMeta(operator);
@@ -283,6 +289,36 @@ wss.on("connection", (socket) => {
 						await operator.setProviderKey(message.provider, message.apiKey);
 						dropWatches();
 						await rebind();
+					} else if (message.type === "applyModelSetup" && message.provider && message.modelId) {
+						dropWatches();
+						try {
+							await operator.applyModelSetup({
+								provider: message.provider,
+								name: message.name,
+								baseUrl: message.baseUrl,
+								api: message.api,
+								apiKey: message.apiKey,
+								modelId: message.modelId,
+								modelName: message.modelName,
+								reasoning: message.reasoning,
+								contextWindow: message.contextWindow,
+								maxTokens: message.maxTokens,
+							});
+						} finally {
+							await rebind();
+						}
+					} else if (message.type === "deleteProvider" && message.id) {
+						await operator.deleteProvider(message.id);
+						meta = await loadMeta(operator);
+						broadcast();
+					} else if (message.type === "deleteProviderKey" && message.provider) {
+						await operator.deleteProviderKey(message.provider);
+						meta = await loadMeta(operator);
+						broadcast();
+					} else if (message.type === "deleteModel" && message.provider && message.modelId) {
+						await operator.deleteModel(message.provider, message.modelId);
+						meta = await loadMeta(operator);
+						broadcast();
 					} else if (message.type === "setSkillEnabled" && message.id && typeof message.enabled === "boolean") {
 						dropWatches();
 						try {
@@ -337,7 +373,8 @@ server.listen(args.port, "127.0.0.1", () => {
 	console.error(`path    ${operator.sessionPath}`);
 	console.error(`cwd     ${operator.cwd}`);
 	console.error(`perm    ${operator.permissionMode()}`);
-	console.error(`model   ${operator.model.provider}/${operator.model.id}`);
+	if (operator.model) console.error(`model   ${operator.model.provider}/${operator.model.id}`);
+	else console.error("model   unconfigured");
 	if (operator.authSource) console.error(`auth    ${operator.authSource}`);
 	if (operator.resumeLabels.length > 0) {
 		console.error(`resume  ${operator.resumeLabels.join(", ")}`);

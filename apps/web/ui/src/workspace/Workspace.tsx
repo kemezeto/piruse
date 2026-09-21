@@ -59,8 +59,11 @@ export function Workspace({
 			<ThinkingPicker
 				current={state.thinkingLevel ?? "off"}
 				levels={
-					state.models.find((model) => model.provider === state.model.provider && model.modelId === state.model.modelId)
-						?.thinkingLevels ?? ["off"]
+					state.model
+						? (state.models.find(
+								(model) => model.provider === state.model?.provider && model.modelId === state.model?.modelId,
+							)?.thinkingLevels ?? ["off"])
+						: ["off"]
 				}
 				onSelect={(level) => onCommand({ type: "setThinkingLevel", level })}
 			/>

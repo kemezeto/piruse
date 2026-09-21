@@ -28,7 +28,7 @@ export interface AgentSettings {
 
 export interface ModelSelection {
 	models: MutableModels;
-	model: Model<Api>;
+	model: Model<Api> | undefined;
 	thinkingLevel: ThinkingLevel;
 	authSource: string | undefined;
 	paths: AgentPaths;
@@ -141,6 +141,7 @@ export async function resolveConfiguredModel(options: ResolveModelOptions = {}):
 	const credentials = FileCredentialStore.create(paths.auth);
 	const models = builtinModels({ credentials });
 	const originals = new Map<string, Provider>();
+	for (const provider of models.getProviders()) originals.set(provider.id, provider);
 	const custom = await loadModelsJson(paths.models);
 	applyCustomCatalog(models, custom, originals);
 	const settings = await loadAgentSettings(paths.settings);
@@ -156,10 +157,18 @@ export async function resolveConfiguredModel(options: ResolveModelOptions = {}):
 			settings.defaultProvider && settings.defaultModel
 				? models.getModel(settings.defaultProvider, settings.defaultModel)
 				: undefined;
-		selected = (await firstAvailable(models, preferred)) ?? preferred ?? catalog[0];
+		selected = (await firstAvailable(models, preferred)) ?? preferred;
 	}
 	if (!selected) {
-		throw new Error("The model catalog is empty.");
+		return {
+			models,
+			model: undefined,
+			thinkingLevel: settings.defaultThinkingLevel ?? "off",
+			authSource: undefined,
+			paths,
+			credentials,
+			originals,
+		};
 	}
 
 	const auth = await models.getAuth(selected.provider).catch(() => undefined);
@@ -216,10 +225,26 @@ export async function listProviderCatalog(
 	originals: Map<string, Provider>,
 ): Promise<{ providers: ViewProviderOption[]; choices: ViewProviderChoice[] }> {
 	const customIds = new Set(Object.keys(file.providers));
-	const choices: ViewProviderChoice[] = models
-		.getProviders()
-		.map((provider) => ({ id: provider.id, name: provider.name }))
-		.sort((left, right) => left.name.localeCompare(right.name) || left.id.localeCompare(right.id));
+	const choices: ViewProviderChoice[] = [];
+	for (const provider of models.getProviders()) {
+		const overlay = file.providers[provider.id];
+		const auth = await models.checkAuth(provider.id);
+		const overlayIds = new Set((overlay?.models ?? []).map((model) => model.id));
+		choices.push({
+			id: provider.id,
+			name: provider.name,
+			custom: customIds.has(provider.id) && !originals.has(provider.id),
+			authenticated: Boolean(auth),
+			baseUrl: overlay?.baseUrl ?? provider.baseUrl,
+			api: overlay?.api ?? provider.getModels()[0]?.api,
+			models: provider.getModels().map((model) => ({
+				id: model.id,
+				name: model.name,
+				custom: overlayIds.has(model.id),
+			})),
+		});
+	}
+	choices.sort((left, right) => left.name.localeCompare(right.name) || left.id.localeCompare(right.id));
 
 	const providers: ViewProviderOption[] = [];
 	for (const provider of models.getProviders()) {

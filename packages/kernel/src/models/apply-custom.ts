@@ -15,8 +15,6 @@ export function applyCustomCatalog(
 	originals: Map<string, Provider>,
 ): void {
 	for (const [id, config] of Object.entries(file.providers)) {
-		const existing = models.getProvider(id);
-		if (!originals.has(id) && existing) originals.set(id, existing);
 		const base = originals.get(id);
 		if (base) models.setProvider(overlayProvider(base, id, config));
 		else models.setProvider(createCustomProvider(id, config));

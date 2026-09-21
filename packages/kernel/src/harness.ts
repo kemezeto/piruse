@@ -43,6 +43,7 @@ import {
 	type ThinkingLevel,
 } from "./runtime/index.ts";
 import { subscribeLaneRun, subscribeLaneView, type RunHandlers, type ViewSubscription } from "./runtime/watch.ts";
+import { emptyView } from "./view.ts";
 import { loadAnalyseSnapshot } from "./session/analyse.ts";
 import { isArchived, readArchiveIndex, writeArchiveIndex } from "./session/archive.ts";
 import { openFirstReadable, shortId } from "./session/open.ts";
@@ -80,7 +81,9 @@ export interface OperatorOpen {
 	extensions: ExtensionHost;
 	inventory: InstalledResources;
 	skills: Skill[];
-	bound: BoundSession;
+	session: Session<JsonlSessionMetadata>;
+	thinkingLevel: ThinkingLevel;
+	bound?: BoundSession;
 }
 
 export interface BootedHarness {
@@ -88,7 +91,7 @@ export interface BootedHarness {
 	sessionId: string;
 	sessionPath: string;
 	resumeLabels: string[];
-	model: { provider: string; id: string };
+	model: { provider: string; id: string } | null;
 	authSource: string | undefined;
 	prompt(text: string): Promise<void>;
 	abort(): Promise<void>;
@@ -129,6 +132,21 @@ export interface BootedHarness {
 		maxTokens?: number;
 	}): Promise<void>;
 	setProviderKey(provider: string, apiKey: string): Promise<void>;
+	applyModelSetup(input: {
+		provider: string;
+		name?: string;
+		baseUrl?: string;
+		api?: string;
+		apiKey?: string;
+		modelId: string;
+		modelName?: string;
+		reasoning?: boolean;
+		contextWindow?: number;
+		maxTokens?: number;
+	}): Promise<void>;
+	deleteProvider(id: string): Promise<void>;
+	deleteProviderKey(provider: string): Promise<void>;
+	deleteModel(provider: string, modelId: string): Promise<void>;
 	packageStatus(): ViewPackageStatus;
 	setSkillEnabled(id: string, enabled: boolean): Promise<void>;
 	setExtensionEnabled(id: string, enabled: boolean): Promise<void>;
@@ -137,13 +155,13 @@ export interface BootedHarness {
 
 export class Operator implements BootedHarness {
 	cwd: string;
-	model: { provider: string; id: string };
+	model: { provider: string; id: string } | null;
 	thinkingLevel: ThinkingLevel;
 	private session: Session<JsonlSessionMetadata>;
-	private harness: AgentHarness;
-	private lane: AgentLane;
+	private harness: AgentHarness | undefined;
+	private lane: AgentLane | undefined;
 	private open: OpenOperation[];
-	private live: LiveConfig;
+	private live: LiveConfig | undefined;
 	private inventory: InstalledResources;
 	private skills: Skill[];
 
@@ -161,17 +179,19 @@ export class Operator implements BootedHarness {
 		private readonly permissions: PermissionGate,
 		readonly profile: AgentProfile,
 		private readonly extensions: ExtensionHost,
-		bound: BoundSession,
+		session: Session<JsonlSessionMetadata>,
+		bound: BoundSession | undefined,
+		thinkingLevel: ThinkingLevel,
 		workspace: { inventory: InstalledResources; skills: Skill[] },
 	) {
 		this.cwd = cwd;
-		this.session = bound.session;
-		this.harness = bound.harness;
-		this.lane = bound.lane;
-		this.open = bound.open;
-		this.live = bound.live;
-		this.model = bound.live.model;
-		this.thinkingLevel = bound.live.thinkingLevel;
+		this.session = bound?.session ?? session;
+		this.harness = bound?.harness;
+		this.lane = bound?.lane;
+		this.open = bound?.open ?? [];
+		this.live = bound?.live;
+		this.model = bound?.live.model ?? null;
+		this.thinkingLevel = bound?.live.thinkingLevel ?? thinkingLevel;
 		this.inventory = workspace.inventory;
 		this.skills = workspace.skills;
 	}
@@ -203,7 +223,9 @@ export class Operator implements BootedHarness {
 			input.permissions,
 			input.profile,
 			input.extensions,
+			input.session,
 			input.bound,
+			input.thinkingLevel,
 			{ inventory: input.inventory, skills: input.skills },
 		);
 		await operator.ensureTitle();
@@ -212,7 +234,7 @@ export class Operator implements BootedHarness {
 	}
 
 	async listModels(): Promise<ViewModelOption[]> {
-		return listAvailableModels(this.models, this.model);
+		return listAvailableModels(this.models, this.model ?? undefined);
 	}
 
 	async listCatalog(): Promise<{ providers: ViewProviderOption[]; choices: ViewProviderChoice[] }> {
@@ -284,7 +306,9 @@ export class Operator implements BootedHarness {
 
 	async sessionTitle(): Promise<string> {
 		const id = this.session.metadata.id;
-		const named = (await this.harness.getName(this.context).catch(() => undefined))?.trim();
+		const named = this.harness
+			? (await this.harness.getName(this.context).catch(() => undefined))?.trim()
+			: undefined;
 		const cached = (await readTitleIndex(this.sessionsRoot))[id];
 		return displayTitle(id, named, cached);
 	}
@@ -296,7 +320,7 @@ export class Operator implements BootedHarness {
 		const titles = await readTitleIndex(this.sessionsRoot);
 		titles[id] = name;
 		await writeTitleIndex(this.sessionsRoot, titles);
-		if (id === this.session.metadata.id) {
+		if (id === this.session.metadata.id && this.harness) {
 			await this.harness.setName(name, this.context);
 		}
 		const archived = await readArchiveIndex(this.sessionsRoot);
@@ -308,7 +332,7 @@ export class Operator implements BootedHarness {
 
 	async rememberTitleFromPrompt(text: string): Promise<void> {
 		const id = this.session.metadata.id;
-		if ((await this.harness.getName(this.context).catch(() => undefined))?.trim()) return;
+		if (this.harness && (await this.harness.getName(this.context).catch(() => undefined))?.trim()) return;
 		if ((await readTitleIndex(this.sessionsRoot))[id]?.trim()) return;
 		const name = titleFromPrompt(text);
 		if (!name) return;
@@ -341,6 +365,7 @@ export class Operator implements BootedHarness {
 	}
 
 	async isRunning(): Promise<boolean> {
+		if (!this.lane) return false;
 		const info = await this.lane.inspectExecution(this.context);
 		return info.current !== null;
 	}
@@ -350,8 +375,15 @@ export class Operator implements BootedHarness {
 		if (!found) throw new Error(`Unknown model ${provider}/${modelId}`);
 		const auth = await this.models.checkAuth(found.provider);
 		if (!auth) throw new Error(`${found.provider} is not authenticated`);
+		if (!this.lane) {
+			await this.openBound({ provider: found.provider, id: found.id });
+			return;
+		}
 		await this.lane.setModel({ provider: found.provider, modelId: found.id }, this.context);
-		this.live.model = { provider: found.provider, id: found.id };
+		this.live = {
+			model: { provider: found.provider, id: found.id },
+			thinkingLevel: this.thinkingLevel,
+		};
 		this.model = this.live.model;
 		const current = await this.lane.getThinkingLevel(this.context);
 		const next = clampModelThinking(found, current);
@@ -364,11 +396,12 @@ export class Operator implements BootedHarness {
 	async setThinkingLevel(level: string): Promise<void> {
 		const parsed = asThinkingLevel(level);
 		if (!parsed) throw new Error(`Unknown thinking level "${level}"`);
+		if (!this.model || !this.lane) throw new Error("还没有选择模型。");
 		const found = this.models.getModel(this.model.provider, this.model.id);
 		if (!found) throw new Error(`Unknown model ${this.model.provider}/${this.model.id}`);
 		const next = clampModelThinking(found, parsed);
 		await this.lane.setThinkingLevel(next, this.context);
-		this.live.thinkingLevel = next;
+		if (this.live) this.live.thinkingLevel = next;
 		this.thinkingLevel = next;
 		await patchAgentSettings(this.paths.settings, { defaultThinkingLevel: parsed });
 		this.syncExtensionRuntime();
@@ -522,7 +555,9 @@ export class Operator implements BootedHarness {
 
 	private async ensureTitle(): Promise<void> {
 		const id = this.session.metadata.id;
-		const named = (await this.harness.getName(this.context).catch(() => undefined))?.trim();
+		const named = this.harness
+			? (await this.harness.getName(this.context).catch(() => undefined))?.trim()
+			: undefined;
 		const stored = await readTitleIndex(this.sessionsRoot);
 		if (named) {
 			if (stored[id] !== named) {
@@ -532,7 +567,7 @@ export class Operator implements BootedHarness {
 			return;
 		}
 		if (stored[id]?.trim()) {
-			await this.harness.setName(stored[id], this.context);
+			if (this.harness) await this.harness.setName(stored[id], this.context);
 			return;
 		}
 		const first = await this.firstUserPrompt();
@@ -567,72 +602,85 @@ export class Operator implements BootedHarness {
 	private async replaceSession(open: () => Promise<Session<JsonlSessionMetadata>>): Promise<void> {
 		if (await this.isRunning()) throw new Error("Stop the current run before switching sessions.");
 		const previous = this.session.metadata;
-		await this.harness.close(this.context);
+		if (this.harness) await this.harness.close(this.context);
 		try {
-			const session = await open();
-			this.applyCwd(session.metadata.cwd);
-			const workspace = await loadWorkspace({
-				cwd: this.cwd,
-				agentDir: this.paths.dir,
-				models: this.models,
-				extensions: this.extensions,
-			});
-			this.inventory = workspace.inventory;
-			this.skills = workspace.skills;
-			const bound = await bindSession({
-				context: this.context,
-				cwd: this.cwd,
-				models: this.models,
-				model: this.model,
-				thinkingLevel: this.thinkingLevel,
-				executionEnv: this.executionEnv,
-				session,
-				permissions: this.permissions,
-				profile: this.profile,
-				skills: this.skills,
-				extensions: this.extensions,
-			});
-			this.applyBound(bound);
-			await this.permissions.loadForCwd(this.cwd, this.context, this.lane);
+			await this.attachSession(await open());
 			await this.resumeOpen();
 			await this.ensureTitle();
 			await this.rememberProject();
 			this.syncExtensionRuntime();
 		} catch (error) {
 			this.applyCwd(previous.cwd);
-			const workspace = await loadWorkspace({
-				cwd: this.cwd,
-				agentDir: this.paths.dir,
-				models: this.models,
-				extensions: this.extensions,
-			});
-			this.inventory = workspace.inventory;
-			this.skills = workspace.skills;
 			const fallback = await this.repo.open(previous, this.context);
-			const bound = await bindSession({
-				context: this.context,
-				cwd: this.cwd,
-				models: this.models,
-				model: this.model,
-				thinkingLevel: this.thinkingLevel,
-				executionEnv: this.executionEnv,
-				session: fallback,
-				permissions: this.permissions,
-				profile: this.profile,
-				skills: this.skills,
-				extensions: this.extensions,
-			});
-			this.applyBound(bound);
-			await this.permissions.loadForCwd(this.cwd, this.context, this.lane);
+			await this.attachSession(fallback);
 			this.syncExtensionRuntime();
 			throw error;
 		}
+	}
+
+	private async attachSession(session: Session<JsonlSessionMetadata>): Promise<void> {
+		this.session = session;
+		this.applyCwd(session.metadata.cwd);
+		const workspace = await loadWorkspace({
+			cwd: this.cwd,
+			agentDir: this.paths.dir,
+			models: this.models,
+			extensions: this.extensions,
+		});
+		this.inventory = workspace.inventory;
+		this.skills = workspace.skills;
+		if (!this.model) {
+			this.harness = undefined;
+			this.lane = undefined;
+			this.open = [];
+			this.live = undefined;
+			await this.permissions.loadForCwd(this.cwd, this.context);
+			return;
+		}
+		const bound = await bindSession({
+			context: this.context,
+			cwd: this.cwd,
+			models: this.models,
+			model: this.model,
+			thinkingLevel: this.thinkingLevel,
+			executionEnv: this.executionEnv,
+			session,
+			permissions: this.permissions,
+			profile: this.profile,
+			skills: this.skills,
+			extensions: this.extensions,
+		});
+		this.applyBound(bound);
+		await this.permissions.loadForCwd(this.cwd, this.context, bound.lane);
+	}
+
+	private async openBound(model: { provider: string; id: string }): Promise<void> {
+		if (this.harness) await this.harness.close(this.context);
+		const bound = await bindSession({
+			context: this.context,
+			cwd: this.cwd,
+			models: this.models,
+			model,
+			thinkingLevel: this.thinkingLevel,
+			executionEnv: this.executionEnv,
+			session: this.session,
+			permissions: this.permissions,
+			profile: this.profile,
+			skills: this.skills,
+			extensions: this.extensions,
+		});
+		this.applyBound(bound);
+		await this.permissions.loadForCwd(this.cwd, this.context, bound.lane);
+		this.syncExtensionRuntime();
 	}
 
 	async setProviderKey(provider: string, apiKey: string): Promise<void> {
 		const id = provider.trim();
 		if (!this.models.getProvider(id)) throw new Error(`Unknown provider "${id}"`);
 		await this.credentials.setApiKey(id, apiKey);
+		const models = this.models.getProvider(id)?.getModels() ?? [];
+		const next = this.model?.provider === id ? this.model : models[0] ? { provider: id, id: models[0].id } : undefined;
+		if (next) await this.setModel(next.provider, next.id);
 	}
 
 	async addProvider(input: { id: string; name?: string; baseUrl: string; api: string; apiKey: string }): Promise<void> {
@@ -691,13 +739,115 @@ export class Operator implements BootedHarness {
 		};
 		await saveModelsJson(this.paths.models, file);
 		this.reloadCatalog(file);
+		if (await this.models.checkAuth(providerId)) await this.setModel(providerId, modelId);
 	}
 
 	private reloadCatalog(file: Awaited<ReturnType<typeof loadModelsJson>>): void {
 		applyCustomCatalog(this.models, file, this.originals);
 	}
 
+	async applyModelSetup(input: {
+		provider: string;
+		name?: string;
+		baseUrl?: string;
+		api?: string;
+		apiKey?: string;
+		modelId: string;
+		modelName?: string;
+		reasoning?: boolean;
+		contextWindow?: number;
+		maxTokens?: number;
+	}): Promise<void> {
+		const modelId = input.modelId.trim();
+		if (!modelId) throw new Error("模型 ID 不能为空");
+		const requested = input.provider.trim();
+		if (!requested) throw new Error("请选择服务商");
+		const providerId = this.models.getProvider(requested) ? requested : slugId(requested);
+		const file = await loadModelsJson(this.paths.models);
+		if (!this.models.getProvider(providerId) && !file.providers[providerId]) {
+			const baseUrl = cleanBaseUrl(input.baseUrl);
+			const api = input.api?.trim() ?? "";
+			if (!baseUrl || !api || !input.apiKey?.trim()) throw new Error("自定义服务商需要 Base URL、API 和 API Key");
+			file.providers[providerId] = {
+				name: input.name?.trim() || providerId,
+				baseUrl,
+				api,
+				models: [],
+			};
+		} else if (file.providers[providerId] && !this.originals.has(providerId)) {
+			const current = file.providers[providerId];
+			if (input.name?.trim()) current.name = input.name.trim();
+			if (input.baseUrl?.trim()) current.baseUrl = cleanBaseUrl(input.baseUrl);
+			if (input.api?.trim()) current.api = input.api.trim();
+		}
+
+		const catalogHas = Boolean(this.models.getModel(providerId, modelId));
+		const overlay = file.providers[providerId];
+		const overlayModel = overlay?.models?.find((model) => model.id === modelId);
+		if (!catalogHas) {
+			const base = this.models.getProvider(providerId);
+			const current = file.providers[providerId] ?? {};
+			const next: ModelsJsonModel = {
+				id: modelId,
+				name: input.modelName?.trim() || modelId,
+				reasoning: input.reasoning,
+				contextWindow: input.contextWindow,
+				maxTokens: input.maxTokens,
+			};
+			file.providers[providerId] = {
+				...current,
+				name: current.name ?? input.name?.trim() ?? base?.name ?? providerId,
+				baseUrl: current.baseUrl ?? cleanBaseUrl(input.baseUrl) ?? base?.baseUrl ?? base?.getModels()[0]?.baseUrl,
+				api: current.api ?? input.api?.trim() ?? base?.getModels()[0]?.api,
+				models: [...(current.models ?? []).filter((model) => model.id !== modelId), next],
+			};
+		} else if (overlayModel) {
+			overlayModel.name = input.modelName?.trim() || overlayModel.name;
+			if (input.reasoning !== undefined) overlayModel.reasoning = input.reasoning;
+			if (input.contextWindow) overlayModel.contextWindow = input.contextWindow;
+			if (input.maxTokens) overlayModel.maxTokens = input.maxTokens;
+		}
+
+		await saveModelsJson(this.paths.models, file);
+		this.reloadCatalog(file);
+		const apiKey = input.apiKey?.trim();
+		if (apiKey) await this.credentials.setApiKey(providerId, apiKey);
+		await this.setModel(providerId, modelId);
+	}
+
+	async deleteProvider(id: string): Promise<void> {
+		const providerId = id.trim();
+		if (this.originals.has(providerId)) throw new Error("内置服务商不能删除，可以删除密钥");
+		const file = await loadModelsJson(this.paths.models);
+		if (!file.providers[providerId]) throw new Error(`Unknown provider "${providerId}"`);
+		delete file.providers[providerId];
+		await saveModelsJson(this.paths.models, file);
+		await this.credentials.delete(providerId);
+		this.models.deleteProvider(providerId);
+		if (this.model?.provider === providerId) this.model = null;
+	}
+
+	async deleteProviderKey(provider: string): Promise<void> {
+		const id = provider.trim();
+		if (!this.models.getProvider(id)) throw new Error(`Unknown provider "${id}"`);
+		await this.credentials.delete(id);
+		if (this.model?.provider === id) this.model = null;
+	}
+
+	async deleteModel(provider: string, modelId: string): Promise<void> {
+		const providerId = provider.trim();
+		const id = modelId.trim();
+		const file = await loadModelsJson(this.paths.models);
+		const current = file.providers[providerId];
+		if (!current?.models?.some((model) => model.id === id)) throw new Error("只能删除自定义模型");
+		current.models = current.models.filter((model) => model.id !== id);
+		await saveModelsJson(this.paths.models, file);
+		this.reloadCatalog(file);
+		if (this.model?.provider === providerId && this.model.id === id) this.model = null;
+	}
+
 	async resumeOpen(): Promise<void> {
+		if (!this.harness || !this.lane) return;
 		for (const operation of this.open) {
 			const restored = operation.lane === this.lane.name ? this.lane : await this.harness.lane(operation.lane, this.context);
 			const result = await restored.resume(this.context);
@@ -706,6 +856,9 @@ export class Operator implements BootedHarness {
 	}
 
 	async prompt(text: string): Promise<void> {
+		if (!this.model || !this.lane) {
+			throw new Error("还没有可用的模型密钥。请先在设置里添加密钥并选择模型。");
+		}
 		const authed = await this.models.checkAuth(this.model.provider);
 		if (!authed) {
 			throw new Error("还没有可用的模型密钥。请先在设置里添加密钥并选择模型。");
@@ -715,11 +868,18 @@ export class Operator implements BootedHarness {
 	}
 
 	async abort(): Promise<void> {
+		if (!this.lane) return;
 		const result = await this.lane.abort(this.context);
 		if (!result.ok) throw new Error(result.error.message);
 	}
 
 	subscribeView(getMeta: () => ViewMeta, onState: (state: ViewState) => void): Promise<ViewSubscription> {
+		if (!this.lane) {
+			return Promise.resolve({
+				unsubscribe() {},
+				view: (meta) => emptyView(meta),
+			});
+		}
 		return subscribeLaneView({
 			lane: this.lane,
 			context: this.context,
@@ -729,6 +889,7 @@ export class Operator implements BootedHarness {
 	}
 
 	subscribeRun(handlers: RunHandlers): Promise<() => void> {
+		if (!this.lane) return Promise.resolve(() => {});
 		return subscribeLaneRun({
 			lane: this.lane,
 			context: this.context,
@@ -737,12 +898,15 @@ export class Operator implements BootedHarness {
 	}
 
 	private syncExtensionRuntime(): void {
+		if (!this.lane || !this.model) return;
+		const lane = this.lane;
+		const model = this.model;
 		this.extensions.bindRuntime({
 			cwd: this.cwd,
 			sessionId: this.session.metadata.id,
 			sessionFile: this.session.metadata.path,
 			models: this.models,
-			model: this.model,
+			model,
 			thinkingLevel: this.thinkingLevel,
 			profile: this.profile,
 			skills: this.skills,
@@ -750,22 +914,22 @@ export class Operator implements BootedHarness {
 			context: this.context,
 			isIdle: () => true,
 			abortParent: () => {
-				void this.lane.abort(this.context);
+				void lane.abort(this.context);
 			},
 			appendEntry: (customType, data) => {
-				void this.lane.appendCustomEntry(customType, toJsonValue(data), this.context);
+				void lane.appendCustomEntry(customType, toJsonValue(data), this.context);
 			},
 			appendMessage: (message) => {
-				void this.lane.appendMessage(message, this.context);
+				void lane.appendMessage(message, this.context);
 			},
 			sendMessage: (message) => {
 				const customType = customTypeOf(message);
 				if (customType) {
-					void this.lane.appendCustomEntry(customType, toJsonValue(message), this.context);
+					void lane.appendCustomEntry(customType, toJsonValue(message), this.context);
 					return;
 				}
 				const agentMessage = asAgentMessage(message);
-				if (agentMessage) void this.lane.appendMessage(agentMessage, this.context);
+				if (agentMessage) void lane.appendMessage(agentMessage, this.context);
 			},
 			getSessionName: () => undefined,
 		});
@@ -774,7 +938,7 @@ export class Operator implements BootedHarness {
 	async close(): Promise<void> {
 		this.permissions.rejectAll("Closed");
 		this.extensions.unload();
-		await this.harness.close(this.context).catch(() => {});
+		if (this.harness) await this.harness.close(this.context).catch(() => {});
 		await this.repo.close(this.context).catch(() => {});
 		await this.executionEnv.cleanup(this.context).catch(() => {});
 	}
@@ -786,4 +950,15 @@ function slugId(id: string): string {
 		throw new Error("Provider id must start with a letter, then letters, digits, or hyphens");
 	}
 	return value;
+}
+
+function cleanBaseUrl(value: string | undefined): string | undefined {
+	const baseUrl = value?.trim().replace(/\/$/, "");
+	if (!baseUrl) return undefined;
+	try {
+		new URL(baseUrl);
+	} catch {
+		throw new Error("baseUrl must be a valid URL");
+	}
+	return baseUrl;
 }

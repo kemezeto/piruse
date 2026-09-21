@@ -8,7 +8,7 @@ export function ModelPicker({
 	models,
 	onSelect,
 }: {
-	current: { provider: string; modelId: string };
+	current: { provider: string; modelId: string } | null;
 	models: ViewModelOption[];
 	onSelect: (model: ViewModelOption) => void;
 }) {
@@ -30,8 +30,10 @@ export function ModelPicker({
 			label="模型"
 			icon={<Robot2Icon size={14} />}
 			value={
-				models.find((model) => model.provider === current.provider && model.modelId === current.modelId)?.name ??
-				"未配置"
+				current
+					? (models.find((model) => model.provider === current.provider && model.modelId === current.modelId)?.name ??
+						"未配置")
+					: "未配置"
 			}
 		>
 			{(close) => (
@@ -41,7 +43,7 @@ export function ModelPicker({
 						<div key={provider} className="popover-group">
 							<div className="popover-group-label">{provider}</div>
 							{entries.map((model) => {
-								const selected = model.provider === current.provider && model.modelId === current.modelId;
+								const selected = current?.provider === model.provider && current.modelId === model.modelId;
 								return (
 									<button
 										type="button"

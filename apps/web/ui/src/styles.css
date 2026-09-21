@@ -3542,12 +3542,185 @@ textarea {
 
 .model-chips li {
 	display: flex;
-	flex-direction: column;
+	flex-direction: row;
+	align-items: center;
+	gap: 0.35rem;
 	background: var(--bg);
 	border: 0;
 	border-radius: 0.5rem;
 	padding: 0.28rem 0.5rem;
 	font-size: 0.78rem;
+}
+
+.model-chips button.model-chip {
+	display: flex;
+	flex-direction: column;
+	border: 0;
+	background: transparent;
+	padding: 0;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.model-chips button.model-chip.active {
+	color: var(--brand);
+}
+
+.model-chips .chip-delete,
+.provider-action {
+	border: 0;
+	background: transparent;
+	color: var(--muted);
+	cursor: pointer;
+	font: inherit;
+	font-size: 0.75rem;
+	padding: 0.15rem 0.35rem;
+}
+
+.provider-action.danger,
+.model-chips .chip-delete {
+	color: var(--td-error-color, #d54941);
+}
+
+.provider-actions {
+	display: flex;
+	gap: 0.35rem;
+	margin-top: 0.65rem;
+}
+
+.catalog-picker {
+	padding: 0.85rem 1.15rem 0.35rem;
+}
+
+.catalog-search {
+	width: 100%;
+	border: 0;
+	background: var(--bg);
+	border-radius: 0.55rem;
+	padding: 0.5rem 0.75rem;
+	color: var(--ink);
+	font: inherit;
+	font-size: 0.85rem;
+}
+
+.catalog-search:focus {
+	outline: none;
+	box-shadow: 0 0 0 2px var(--td-brand-color-focus);
+}
+
+.catalog-list {
+	display: flex;
+	flex-direction: column;
+	max-height: 16rem;
+	overflow: auto;
+	margin-top: 0.45rem;
+}
+
+.catalog-empty {
+	margin: 0.35rem 0.15rem;
+	color: var(--muted);
+	font-size: 0.78rem;
+}
+
+.catalog-option {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	width: 100%;
+	border: 0;
+	background: transparent;
+	border-radius: 0.45rem;
+	padding: 0.42rem 0.45rem;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.catalog-option:hover,
+.catalog-option.active {
+	background: var(--chip);
+}
+
+.catalog-option-copy {
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.08rem;
+}
+
+.catalog-option-copy strong {
+	font-size: 0.84rem;
+	font-weight: 600;
+}
+
+.catalog-option-copy span,
+.catalog-option em {
+	color: var(--muted);
+	font-style: normal;
+	font-size: 0.72rem;
+}
+
+.catalog-id {
+	font-family: "Source Code Pro", ui-monospace, monospace;
+	font-size: 0.7rem;
+}
+
+.catalog-create {
+	margin-top: 0.15rem;
+	border-top: 1px solid var(--line);
+	border-radius: 0;
+	padding-top: 0.55rem;
+}
+
+.catalog-selected {
+	display: flex;
+	align-items: center;
+	gap: 0.45rem;
+	width: 100%;
+	min-height: 2.1rem;
+	background: var(--bg);
+	border-radius: 0.55rem;
+	padding: 0.22rem 0.28rem 0.22rem 0.7rem;
+}
+
+.catalog-selected strong {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 0.85rem;
+	font-weight: 600;
+	text-align: left;
+}
+
+.catalog-selected input {
+	flex: 1;
+	min-width: 0;
+	background: transparent;
+	padding: 0.2rem 0;
+}
+
+.catalog-reselect {
+	flex: none;
+	border: 0;
+	background: var(--chip);
+	color: var(--ink);
+	border-radius: 0.4rem;
+	padding: 0.32rem 0.7rem;
+	cursor: pointer;
+	font: inherit;
+	font-size: 0.78rem;
+	font-weight: 550;
+}
+
+.catalog-reselect:hover {
+	background: color-mix(in srgb, var(--brand) 14%, var(--chip));
+	color: var(--brand);
 }
 
 .model-chips li span {

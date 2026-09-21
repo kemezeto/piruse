@@ -79,7 +79,7 @@ export class PermissionGate {
 		this.grants.paths.clear();
 	}
 
-	async loadForCwd(cwd: string, context: Context, lane: AgentLane): Promise<void> {
+	async loadForCwd(cwd: string, context: Context, lane?: AgentLane): Promise<void> {
 		const changed = this.cwd !== cwd;
 		this.cwd = cwd;
 		this.rejectAll("Project changed");
@@ -88,11 +88,11 @@ export class PermissionGate {
 		if (this.interactive) {
 			this.mode = (await readPermissionMode(this.sessionsRoot, cwd)) ?? this.permissionDefault;
 		}
-		await this.applyTools(lane, context);
+		if (lane) await this.applyTools(lane, context);
 		this.emit();
 	}
 
-	async setMode(mode: PermissionMode, lane: AgentLane, context: Context): Promise<void> {
+	async setMode(mode: PermissionMode, lane: AgentLane | undefined, context: Context): Promise<void> {
 		if (!isPermissionMode(mode)) throw new Error(`Unknown permission mode: ${String(mode)}`);
 		this.mode = mode;
 		if (this.interactive) await writePermissionMode(this.sessionsRoot, this.cwd, mode).catch(() => {});
@@ -102,7 +102,7 @@ export class PermissionGate {
 			else if (mode === "read") this.settle(call.id, false);
 			else call.verdict = verdict;
 		}
-		await this.applyTools(lane, context);
+		if (lane) await this.applyTools(lane, context);
 		this.emit();
 	}
 

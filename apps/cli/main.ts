@@ -46,7 +46,7 @@ const stop = await boot.subscribeRun({
 });
 
 process.stderr.write(
-	`session ${boot.sessionId}\npath    ${boot.sessionPath}\nmodel   ${boot.model.provider}/${boot.model.id}\n${boot.authSource ? `auth    ${boot.authSource}\n` : ""}`,
+	`session ${boot.sessionId}\npath    ${boot.sessionPath}\nmodel   ${boot.model ? `${boot.model.provider}/${boot.model.id}` : "unconfigured"}\n${boot.authSource ? `auth    ${boot.authSource}\n` : ""}`,
 );
 if (boot.resumeLabels.length > 0) {
 	process.stderr.write(`resume  ${boot.resumeLabels.join(", ")}\n`);

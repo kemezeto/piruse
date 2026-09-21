@@ -21,6 +21,22 @@ export type ClientMessage =
 	| { type: "addProvider"; id?: string; name?: string; baseUrl?: string; api?: string; apiKey?: string }
 	| { type: "addModel"; provider?: string; modelId?: string; name?: string; reasoning?: boolean; contextWindow?: number; maxTokens?: number }
 	| { type: "setProviderKey"; provider?: string; apiKey?: string }
+	| {
+			type: "applyModelSetup";
+			provider?: string;
+			name?: string;
+			baseUrl?: string;
+			api?: string;
+			apiKey?: string;
+			modelId?: string;
+			modelName?: string;
+			reasoning?: boolean;
+			contextWindow?: number;
+			maxTokens?: number;
+	  }
+	| { type: "deleteProvider"; id?: string }
+	| { type: "deleteProviderKey"; provider?: string }
+	| { type: "deleteModel"; provider?: string; modelId?: string }
 	| { type: "setSkillEnabled"; id?: string; enabled?: boolean }
 	| { type: "setExtensionEnabled"; id?: string; enabled?: boolean }
 	| { type: "loadAnalyse" };

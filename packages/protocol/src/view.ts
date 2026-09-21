@@ -18,6 +18,11 @@ export interface ViewModelOption {
 export interface ViewProviderChoice {
 	id: string;
 	name: string;
+	custom: boolean;
+	authenticated: boolean;
+	baseUrl?: string;
+	api?: string;
+	models: { id: string; name: string; custom: boolean }[];
 }
 
 export interface ViewProviderOption {
@@ -90,7 +95,7 @@ export interface ViewState {
 	sessionTitle: string;
 	cwd: string;
 	sessionPath: string;
-	model: { provider: string; modelId: string };
+	model: { provider: string; modelId: string } | null;
 	thinkingLevel: ThinkingLevel;
 	models: ViewModelOption[];
 	providers: ViewProviderOption[];
@@ -135,4 +140,6 @@ export interface ViewMeta {
 	permissionMode: PermissionMode;
 	pendingApprovals: ViewApproval[];
 	packages: ViewPackageStatus;
+	model: { provider: string; modelId: string } | null;
+	thinkingLevel: ThinkingLevel;
 }

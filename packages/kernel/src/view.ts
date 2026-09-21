@@ -63,8 +63,8 @@ export function projectView(meta: ViewMeta, lane: LaneSnapshot): ViewState {
 		sessionTitle: meta.sessionTitle,
 		cwd: meta.cwd,
 		sessionPath: meta.sessionPath,
-		model: lane.configuration.model,
-		thinkingLevel: lane.configuration.thinkingLevel,
+		model: meta.model,
+		thinkingLevel: meta.thinkingLevel,
 		models: meta.models,
 		providers: meta.providers,
 		providerChoices: meta.providerChoices,
@@ -76,5 +76,27 @@ export function projectView(meta: ViewMeta, lane: LaneSnapshot): ViewState {
 		packages: meta.packages ?? { skills: [], extensions: [], diagnostics: [], unsupported: [] },
 		running: lane.operation !== null,
 		items,
+	};
+}
+
+export function emptyView(meta: ViewMeta): ViewState {
+	return {
+		sessionId: meta.sessionId,
+		sessionTitle: meta.sessionTitle,
+		cwd: meta.cwd,
+		sessionPath: meta.sessionPath,
+		model: meta.model,
+		thinkingLevel: meta.thinkingLevel,
+		models: meta.models,
+		providers: meta.providers,
+		providerChoices: meta.providerChoices,
+		projects: meta.projects,
+		sessions: meta.sessions,
+		archivedSessions: meta.archivedSessions,
+		permissionMode: meta.permissionMode,
+		pendingApprovals: meta.pendingApprovals,
+		packages: meta.packages ?? { skills: [], extensions: [], diagnostics: [], unsupported: [] },
+		running: false,
+		items: [],
 	};
 }

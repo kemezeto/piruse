@@ -85,6 +85,7 @@ export function App() {
 				open={settingsOpen}
 				providers={state?.providers ?? []}
 				choices={state?.providerChoices ?? []}
+				current={state?.model ?? null}
 				sessions={state?.sessions ?? []}
 				archivedSessions={state?.archivedSessions ?? []}
 				currentSessionId={state?.sessionId ?? ""}
