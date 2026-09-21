@@ -8,6 +8,7 @@ import { ThinkingPicker } from "../pickers/ThinkingPicker";
 import type { HostCommand, Line } from "../socket";
 import { Composer } from "./Composer";
 import { Thread } from "./Thread";
+import { TurnNav } from "./TurnNav";
 
 export function Workspace({
 	state,
@@ -104,27 +105,30 @@ export function Workspace({
 					{packagesLine(state?.packages) ? <p className="workspace-packages">{packagesLine(state?.packages)}</p> : null}
 				</header>
 			)}
-			<div className="stage" ref={stageRef}>
-				{empty ? (
-					<div className="welcome">
-						<h1>欢迎使用 Piruse，说说你想做什么</h1>
-						{approvals}
-						{notice ? <p className="notice">{notice}</p> : null}
-						<Composer
-							layout="welcome"
-							running={Boolean(state?.running)}
-							onSend={onSend}
-							onAbort={() => onCommand({ type: "abort" })}
-							autoFocus
-							model={modelPicker}
-							workspace={workspacePicker}
-							permission={permissionPicker}
-						/>
-						<HintTicker />
-					</div>
-				) : (
-					<Thread items={state.items} />
-				)}
+			<div className="workspace-main">
+				<div className="stage" ref={stageRef}>
+					{empty ? (
+						<div className="welcome">
+							<h1>欢迎使用 Piruse，说说你想做什么</h1>
+							{approvals}
+							{notice ? <p className="notice">{notice}</p> : null}
+							<Composer
+								layout="welcome"
+								running={Boolean(state?.running)}
+								onSend={onSend}
+								onAbort={() => onCommand({ type: "abort" })}
+								autoFocus
+								model={modelPicker}
+								workspace={workspacePicker}
+								permission={permissionPicker}
+							/>
+							<HintTicker />
+						</div>
+					) : (
+						<Thread items={state.items} />
+					)}
+				</div>
+				{empty ? null : <TurnNav items={state.items} stageRef={stageRef} />}
 			</div>
 			{empty ? null : (
 				<div className="dock">

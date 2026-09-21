@@ -20,7 +20,7 @@ export function Thread({ items }: { items: ViewItem[] }) {
 				{blocks.map((block) => {
 					if (block.kind === "user") {
 						return (
-							<div className="turn user" key={block.item.id}>
+							<div className="turn user" key={block.item.id} data-turn={block.item.id}>
 								<div className="bubble">{block.item.text}</div>
 							</div>
 						);

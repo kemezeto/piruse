@@ -388,6 +388,14 @@ textarea {
 	background: var(--surface);
 }
 
+.workspace-main {
+	position: relative;
+	min-height: 0;
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+}
+
 .analyse-workspace {
 	background: color-mix(in srgb, var(--ink) 3.5%, var(--bg));
 }
@@ -1995,6 +2003,123 @@ textarea {
 	overflow: auto;
 	scrollbar-width: none;
 	-ms-overflow-style: none;
+}
+
+.stage::-webkit-scrollbar {
+	width: 0;
+	height: 0;
+	display: none;
+}
+
+.turn-nav {
+	position: absolute;
+	z-index: 4;
+	top: 50%;
+	right: 0.7rem;
+	transform: translateY(-50%);
+	max-height: min(22rem, calc(100% - 2rem));
+}
+
+.turn-nav-list {
+	list-style: none;
+	margin: 0;
+	padding: 0.35rem 0.28rem;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 0.42rem;
+	max-height: min(22rem, calc(100vh - 14rem));
+	overflow: auto;
+	scrollbar-width: none;
+	border-radius: 0.95rem;
+}
+
+.turn-nav-list::-webkit-scrollbar {
+	display: none;
+}
+
+.turn-nav-list li {
+	width: 100%;
+}
+
+.turn-nav-list button {
+	width: 100%;
+	border: 0;
+	background: transparent;
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 0.55rem;
+	padding: 0.08rem 0.12rem;
+	color: var(--muted);
+	cursor: pointer;
+	text-align: right;
+}
+
+.turn-nav-label {
+	max-width: 0;
+	opacity: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	font-size: 0.72rem;
+	line-height: 1.35;
+	transform: translateX(0.35rem);
+	transition:
+		max-width 0.18s ease,
+		opacity 0.16s ease,
+		transform 0.18s ease;
+	pointer-events: none;
+}
+
+.turn-nav-tick {
+	flex: none;
+	width: 0.62rem;
+	height: 2px;
+	border-radius: 99px;
+	background: color-mix(in srgb, var(--ink) 22%, transparent);
+	transition:
+		width 0.16s ease,
+		background 0.16s ease;
+}
+
+.turn-nav-list .active .turn-nav-tick {
+	width: 0.78rem;
+	background: var(--brand);
+}
+
+.turn-nav-list .active button {
+	color: var(--ink);
+}
+
+.turn-nav:hover .turn-nav-list,
+.turn-nav:focus-within .turn-nav-list {
+	align-items: stretch;
+	gap: 0.08rem;
+	padding: 0.5rem 0.45rem 0.5rem 0.55rem;
+	background: var(--surface);
+	border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+	box-shadow: 0 10px 32px color-mix(in srgb, var(--ink) 10%, transparent);
+}
+
+.turn-nav:hover .turn-nav-label,
+.turn-nav:focus-within .turn-nav-label {
+	max-width: 11.4rem;
+	opacity: 1;
+	transform: none;
+	pointer-events: auto;
+}
+
+.turn-nav:hover .turn-nav-list button,
+.turn-nav:focus-within .turn-nav-list button {
+	padding: 0.28rem 0.2rem;
+	border-radius: 0.45rem;
+}
+
+.turn-nav:hover .turn-nav-list button:hover,
+.turn-nav:focus-within .turn-nav-list button:hover {
+	background: color-mix(in srgb, var(--ink) 5%, transparent);
+	color: var(--ink);
 }
 
 .stage::-webkit-scrollbar {
