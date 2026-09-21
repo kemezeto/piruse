@@ -6,3 +6,4 @@ dist/
 sessions/
 .tmp/
 *:Zone.Identifier
+./cursor/session.json
