@@ -642,8 +642,29 @@ textarea {
 	min-width: 0;
 }
 
+.ov-heat {
+	display: grid;
+	grid-template-columns: 2.4rem minmax(0, 1fr);
+	align-items: stretch;
+	min-width: 0;
+}
+
+.ov-heat-dows {
+	list-style: none;
+	margin: 0;
+	padding: 28px 0.35rem 6px 0;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-around;
+	color: #6f6f6b;
+	font-size: 0.68rem;
+	line-height: 1;
+	text-align: right;
+	user-select: none;
+}
+
 .ov-chart-heat {
-	height: 10.2rem;
+	height: 11.6rem;
 }
 
 .ov-chart-bar {
@@ -694,10 +715,15 @@ textarea {
 
 .ov-tool-hot li {
 	display: grid;
-	grid-template-columns: 0.7rem minmax(8rem, 1fr) 4.5rem 4.6rem 5.2rem 3.6rem;
+	grid-template-columns: 1.4rem 0.7rem minmax(8rem, 1fr) 4.5rem 4.6rem 5.2rem 3.6rem;
 	gap: 0.7rem;
 	align-items: center;
 	font-size: 0.84rem;
+}
+
+.ov-tool-hot li > .ov-hot-n {
+	padding-top: 0;
+	text-align: right;
 }
 
 .ov-tool-hot li > .ov-dim,
@@ -837,7 +863,7 @@ textarea {
 
 .ov-hot li {
 	display: grid;
-	grid-template-columns: 1.4rem minmax(0, 1fr) auto;
+	grid-template-columns: 1.6rem minmax(0, 1fr) auto;
 	gap: 0.55rem;
 	align-items: start;
 	padding: 0.32rem 0.1rem;
@@ -847,17 +873,25 @@ textarea {
 	border-top: 1px solid color-mix(in srgb, var(--ink) 6%, transparent);
 }
 
-.ov-hot-n,
-.ov-hot strong {
-	color: var(--muted);
-	font-size: 0.78rem;
+.ov-hot-n {
+	color: #5c5c58;
+	font-size: 0.82rem;
 	font-variant-numeric: tabular-nums;
+	font-weight: 650;
+	text-align: right;
 	padding-top: 0.12rem;
+}
+
+.ov-hot-n.aborted {
+	color: var(--danger);
 }
 
 .ov-hot strong {
 	color: var(--ink);
+	font-size: 0.78rem;
+	font-variant-numeric: tabular-nums;
 	font-weight: 550;
+	padding-top: 0.12rem;
 }
 
 .ov-hot-copy {
@@ -1060,7 +1094,7 @@ textarea {
 	}
 
 	.ov-tool-hot li {
-		grid-template-columns: 0.7rem minmax(0, 1fr) 3.8rem 3.8rem 4.8rem 3.2rem;
+		grid-template-columns: 1.2rem 0.7rem minmax(0, 1fr) 3.8rem 3.8rem 4.8rem 3.2rem;
 		gap: 0.45rem;
 	}
 

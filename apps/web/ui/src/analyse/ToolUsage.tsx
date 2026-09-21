@@ -32,8 +32,9 @@ export function ToolUsage({
 			</div>
 			<p className="ov-kicker">热门 TOOL</p>
 			<ul className="ov-tool-hot">
-				{hot.map((item) => (
+				{hot.map((item, index) => (
 					<li key={item.name}>
+						<span className="ov-hot-n">{index + 1}</span>
 						<i className="ov-swatch" style={{ background: item.color }} />
 						<strong>{item.name}</strong>
 						<span className="ov-dim">{item.category}</span>

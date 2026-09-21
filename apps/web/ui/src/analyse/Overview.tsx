@@ -8,7 +8,7 @@ import { DateRangePicker } from "./DateRangePicker";
 import { EChart } from "./EChart";
 import { SkillUsage } from "./SkillUsage";
 import { ToolUsage } from "./ToolUsage";
-import { activityBarOption, calendarHeatOption, hourHeatOption, METRIC_LABEL } from "./charts";
+import { activityBarOption, calendarHeatOption, hourHeatOption, METRIC_LABEL, WEEKDAYS_MON } from "./charts";
 import { buildOverviewStats, sortedHot, type ActivityMetric, type HotSort, type TimeGrain } from "./demo";
 import { resolveRange, todayShanghai, type OverviewRange } from "./range";
 
@@ -159,7 +159,14 @@ export function Overview({
 						))}
 					</div>
 				</div>
-				<EChart className="ov-chart ov-chart-heat" option={heatOption} />
+				<div className="ov-heat">
+					<ol className="ov-heat-dows" aria-label="星期">
+						{WEEKDAYS_MON.map((name) => (
+							<li key={name}>{name}</li>
+						))}
+					</ol>
+					<EChart className="ov-chart ov-chart-heat" option={heatOption} />
+				</div>
 			</section>
 
 			<div className="ov-split">
@@ -224,7 +231,7 @@ export function Overview({
 					<ol className="ov-hot">
 						{hot.slice(0, 6).map((item, index) => (
 							<li key={item.id}>
-								<span className="ov-hot-n">{index + 1}</span>
+								<span className={`ov-hot-n${item.aborted ? " aborted" : ""}`}>{index + 1}</span>
 								<div className="ov-hot-copy">
 									<p>
 										{item.aborted ? <i className="ov-dot" /> : null}

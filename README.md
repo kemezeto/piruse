@@ -72,6 +72,34 @@ npm start -- --model deepseek/deepseek-v4-flash "…"
 
 记忆模块（`memory/internal`、`memory/external`）还没接上。跨轮内容靠会话 jsonl；窗口太大时走 compaction。
 
+## Analyse 看板：哪些数据接得上
+
+Analyse 和 Coding 是同一套 kernel、同一份 `~/.piruse/sessions` jsonl。看板不另做埋点 SDK，也不读 Cursor / Copilot / 云端账单。浏览器只拿汇总快照（`loadAnalyse`），不直接读账本。
+
+**jsonl 里有、已经接上：**
+
+- 概览：会话数、消息、项目、活跃天、日历 / 小时热力、热门会话、Tool 调用次数
+- 用量：input / output / cache token、费用（assistant `usage` 或 usage ledger）
+- 活动：按会话起止时间推窗口、并发、费用
+- 会话页：当前会话的 `ViewState`（消息和工具回合）
+- 数据表：会话账本行
+- 质量里能直接数的：中止、失败、工具错误、compaction 次数
+
+**账本里没有、接不上：**
+
+| 界面上的能力 | 为什么接不上 |
+| --- | --- |
+| 常用 Skills / 技能调用次数 | 技能只写入系统提示，模型用 `read` 打开 SKILL.md；jsonl 没有 skill 调用事件 |
+| 质量 A–F、平均分 | 没有 LLM 评分或人工标注；现在的分数是用完成 / 中止 / 失败 / 工具错误推的操作健康度，不是回复质量 |
+| 用量 credits / 账户余额 | 没有各 provider 的账单或额度接口 |
+| 活动里的 automation | 没有后台自动化会话类型，全部记成 interactive |
+| 按 Agent 拆分（Analyse vs Coding 等） | 只有 coding 会话；Analyse 是 UI 开关，不单独写 jsonl |
+| Cursor / Copilot / 其他 IDE 用量 | 本机 agent 看不到那些产品的遥测 |
+| MCP 工具 | `tools/mcp` 还没接 |
+| 记忆读写 | `memory/` 还没接 |
+
+时区按 Asia/Shanghai。归档会话不进看板。
+
 ## 结构
 
 浏览器只看到 `packages/protocol`。UI 禁止 import kernel 或 `pi-agent-core`。

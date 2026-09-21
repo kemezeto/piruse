@@ -15,6 +15,7 @@ export const METRIC_LABEL: Record<ActivityMetric, string> = {
 
 const GREENS = ["#ebedf0", "#c6e8c9", "#78c47d", "#3fa047", "#216e39"];
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+export const WEEKDAYS_MON = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function formatInt(value: number): string {
 	return Math.round(value).toLocaleString("en-US");
@@ -61,12 +62,12 @@ export function calendarHeatOption(days: DayStat[], metric: ActivityMetric, star
 		},
 		calendar: {
 			top: 28,
-			left: 36,
+			left: 8,
 			right: 8,
-			bottom: 8,
+			bottom: 6,
 			range: [start, end],
-			firstDay: 1,
-			cellSize: ["auto", 13],
+			orient: "horizontal",
+			cellSize: ["auto", "auto"],
 			itemStyle: {
 				color: GREENS[0],
 				borderWidth: 3,
@@ -79,13 +80,12 @@ export function calendarHeatOption(days: DayStat[], metric: ActivityMetric, star
 				nameMap: ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"],
 				color: "#8a8a86",
 				fontSize: 11,
+				margin: 8,
 			},
 			dayLabel: {
+				show: false,
 				firstDay: 1,
 				nameMap: WEEKDAYS,
-				color: "#8a8a86",
-				fontSize: 11,
-				formatter: (name: string) => (name === "Mon" || name === "Wed" || name === "Fri" ? name : ""),
 			},
 		},
 		series: [
@@ -153,7 +153,8 @@ export function hourHeatOption(grid: number[][], unit: string): EChartsCoreOptio
 	for (let dow = 0; dow < 7; dow += 1) {
 		for (let hour = 0; hour < 24; hour += 1) {
 			const value = grid[dow]?.[hour] ?? 0;
-			data.push([hour, dow, value]);
+			const y = dow === 0 ? 6 : dow - 1;
+			data.push([hour, y, value]);
 			if (value > max) max = value;
 		}
 	}
@@ -163,7 +164,7 @@ export function hourHeatOption(grid: number[][], unit: string): EChartsCoreOptio
 			formatter: (params: unknown) => {
 				const row = tooltipPoint(params)?.value as [number, number, number] | undefined;
 				if (!row) return "";
-				return `${WEEKDAYS[row[1]]} ${String(row[0]).padStart(2, "0")}:00: ${formatInt(row[2])} ${unit}`;
+				return `${WEEKDAYS_MON[row[1]]} ${String(row[0]).padStart(2, "0")}:00: ${formatInt(row[2])} ${unit}`;
 			},
 		},
 		visualMap: {
@@ -172,7 +173,7 @@ export function hourHeatOption(grid: number[][], unit: string): EChartsCoreOptio
 			max,
 			inRange: { color: GREENS },
 		},
-		grid: { left: 36, right: 8, top: 18, bottom: 8 },
+		grid: { left: 8, right: 8, top: 22, bottom: 8, containLabel: true },
 		xAxis: {
 			type: "category",
 			data: Array.from({ length: 24 }, (_, hour) => hour),
@@ -188,7 +189,7 @@ export function hourHeatOption(grid: number[][], unit: string): EChartsCoreOptio
 		},
 		yAxis: {
 			type: "category",
-			data: WEEKDAYS,
+			data: WEEKDAYS_MON,
 			inverse: true,
 			splitArea: { show: false },
 			axisTick: { show: false },
