@@ -1,4 +1,4 @@
-import type { AgentHarnessTool, ExecutionToolContext } from "@earendil-works/pi-agent-core";
+import type { AgentHarnessTool, ExecutionToolContext } from "../runtime/index.ts";
 import type { PromptRuntime } from "../context/assemble.ts";
 import type { Skill } from "../skills/index.ts";
 import type { PermissionMode } from "../tools/policy.ts";

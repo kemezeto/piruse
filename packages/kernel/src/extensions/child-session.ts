@@ -10,10 +10,10 @@ import {
 	getOrThrow,
 	type JsonlSessionMetadata,
 	JsonlSessionRepo,
+	NodeExecutionEnv,
 	type Session,
 	type ThinkingLevel,
-} from "@earendil-works/pi-agent-core";
-import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
+} from "../runtime/index.ts";
 import type { Api, Model, MutableModels } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
 import { compactionSettings } from "../compaction/settings.ts";

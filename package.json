@@ -5,7 +5,8 @@
 	"scripts": {
 		"start": "tsx apps/cli/main.ts",
 		"web": "tsx apps/web/host.ts",
-		"typecheck": "tsc --noEmit && tsc --noEmit -p apps/web/ui/tsconfig.json"
+		"typecheck": "tsc --noEmit && tsc --noEmit -p apps/web/ui/tsconfig.json && node scripts/check-pi-imports.mjs",
+		"check:imports": "node scripts/check-pi-imports.mjs"
 	},
 	"dependencies": {
 		"@earendil-works/pi-agent-core": "0.85.1",

@@ -1,28 +1,34 @@
-import {
-	AgentHarness,
-	type AgentLane,
-	BACKGROUND_CONTEXT,
-	type Context,
-	type JsonlSessionMetadata,
-	JsonlSessionRepo,
-	type OpenOperation,
-	type Session,
-	type ThinkingLevel,
-} from "@earendil-works/pi-agent-core";
-import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
 import type { MutableModels, Provider } from "@earendil-works/pi-ai";
 import type { AnalyseSnapshot } from "../../protocol/src/analyse.ts";
 import type {
 	ApprovalRemember,
 	ViewArchivedSession,
 	ViewApproval,
+	ViewMeta,
 	ViewModelOption,
 	ViewPackageStatus,
 	ViewProjectOption,
 	ViewProviderChoice,
 	ViewProviderOption,
 	ViewSessionOption,
+	ViewState,
 } from "../../protocol/src/view.ts";
+import {
+	type AgentHarness,
+	type AgentLane,
+	BACKGROUND_CONTEXT,
+	type Context,
+	createExecutionEnv,
+	createHarness,
+	createSessionRepo,
+	type JsonlSessionMetadata,
+	type JsonlSessionRepo,
+	type NodeExecutionEnv,
+	type OpenOperation,
+	type Session,
+	type ThinkingLevel,
+} from "./runtime/index.ts";
+import { subscribeLaneRun, subscribeLaneView, type RunHandlers, type ViewSubscription } from "./runtime/watch.ts";
 import { compactionSettings } from "./compaction/settings.ts";
 import { userText } from "./messages.ts";
 import { FileCredentialStore } from "./models/auth-store.ts";
@@ -75,14 +81,19 @@ export interface BootOptions {
 	interactiveApprovals?: boolean;
 }
 
+export type { RunHandlers, ViewSubscription };
+
 export interface BootedHarness {
-	context: Context;
-	session: Session<JsonlSessionMetadata>;
-	harness: AgentHarness;
-	lane: AgentLane;
-	open: OpenOperation[];
+	cwd: string;
+	sessionId: string;
+	sessionPath: string;
+	resumeLabels: string[];
 	model: { provider: string; id: string };
 	authSource: string | undefined;
+	prompt(text: string): Promise<void>;
+	abort(): Promise<void>;
+	subscribeView(getMeta: () => ViewMeta, onState: (state: ViewState) => void): Promise<ViewSubscription>;
+	subscribeRun(handlers: RunHandlers): Promise<() => void>;
 	resumeOpen(): Promise<void>;
 	close(): Promise<void>;
 	listModels(): Promise<ViewModelOption[]>;
@@ -131,16 +142,16 @@ interface LiveConfig {
 
 export class Operator implements BootedHarness {
 	cwd: string;
-	session: Session<JsonlSessionMetadata>;
-	harness: AgentHarness;
-	lane: AgentLane;
-	open: OpenOperation[];
 	model: { provider: string; id: string };
 	thinkingLevel: ThinkingLevel;
+	private session: Session<JsonlSessionMetadata>;
+	private harness: AgentHarness;
+	private lane: AgentLane;
+	private open: OpenOperation[];
 	private live: LiveConfig;
 
 	private constructor(
-		readonly context: Context,
+		private readonly context: Context,
 		cwd: string,
 		readonly models: MutableModels,
 		readonly authSource: string | undefined,
@@ -171,6 +182,18 @@ export class Operator implements BootedHarness {
 		this.thinkingLevel = bound.live.thinkingLevel;
 	}
 
+	get sessionId(): string {
+		return this.session.metadata.id;
+	}
+
+	get sessionPath(): string {
+		return this.session.metadata.path;
+	}
+
+	get resumeLabels(): string[] {
+		return this.open.map((operation) => `${operation.lane}/${operation.operationId}`);
+	}
+
 	static async boot(options: BootOptions): Promise<Operator> {
 		const context = BACKGROUND_CONTEXT;
 		const configured = await resolveConfiguredModel({
@@ -178,10 +201,10 @@ export class Operator implements BootedHarness {
 			provider: options.provider,
 			model: options.model,
 		});
-		const executionEnv = new NodeExecutionEnv({ cwd: options.cwd });
+		const executionEnv = createExecutionEnv(options.cwd);
 		const bootCwd = await resolveProjectDirectory(executionEnv, options.cwd, context);
 		executionEnv.cwd = bootCwd;
-		const repo = new JsonlSessionRepo({ fileSystem: executionEnv, sessionsRoot: options.sessionsRoot });
+		const repo = createSessionRepo(executionEnv, options.sessionsRoot);
 		const archived = await readArchiveIndex(options.sessionsRoot);
 		const session = await openInitialSession(
 			repo,
@@ -262,7 +285,7 @@ export class Operator implements BootedHarness {
 			model: { provider: catalogModel.provider, id: catalogModel.id },
 			thinkingLevel: clampModelThinking(catalogModel, thinkingLevel),
 		};
-		const { harness, open } = await AgentHarness.create(
+		const { harness, open } = await createHarness(
 			{
 				session,
 				models,
@@ -771,6 +794,33 @@ export class Operator implements BootedHarness {
 			const result = await restored.resume(this.context);
 			if (!result.ok) throw result.error;
 		}
+	}
+
+	async prompt(text: string): Promise<void> {
+		const result = await this.lane.prompt(text, undefined, this.context);
+		if (!result.ok) throw new Error(result.error.message);
+	}
+
+	async abort(): Promise<void> {
+		const result = await this.lane.abort(this.context);
+		if (!result.ok) throw new Error(result.error.message);
+	}
+
+	subscribeView(getMeta: () => ViewMeta, onState: (state: ViewState) => void): Promise<ViewSubscription> {
+		return subscribeLaneView({
+			lane: this.lane,
+			context: this.context,
+			getMeta,
+			onState,
+		});
+	}
+
+	subscribeRun(handlers: RunHandlers): Promise<() => void> {
+		return subscribeLaneRun({
+			lane: this.lane,
+			context: this.context,
+			handlers,
+		});
 	}
 
 	private syncExtensionRuntime(): void {

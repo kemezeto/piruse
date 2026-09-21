@@ -1,4 +1,4 @@
-import { createReadTool } from "@earendil-works/pi-agent-core";
+import { createReadTool } from "../../runtime/index.ts";
 
 export function readTool() {
 	return createReadTool();

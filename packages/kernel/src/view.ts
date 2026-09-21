@@ -1,4 +1,4 @@
-import type { LaneSnapshot } from "@earendil-works/pi-agent-core";
+import type { LaneSnapshot } from "./runtime/index.ts";
 import type { ViewItem, ViewMeta, ViewState } from "../../protocol/src/view.ts";
 import { itemsFromWindowEntry } from "./compaction/project.ts";
 import { formatArgs, itemsFromMessage, textOfContent } from "./messages.ts";

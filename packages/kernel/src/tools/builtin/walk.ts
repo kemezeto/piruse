@@ -1,4 +1,4 @@
-import type { Context, ExecutionEnv, FileInfo } from "@earendil-works/pi-agent-core";
+import type { Context, ExecutionEnv, FileInfo } from "../../runtime/index.ts";
 import { pathIsSkipped } from "./skip.ts";
 
 const MAX_WALK_FILES = 8000;

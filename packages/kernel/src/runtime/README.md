@@ -1,4 +1,10 @@
-# Lane / drive / restore.
+# Runtime wall.
 
-Fill when piruse wraps pi's runtime instead of calling AgentHarness directly.
+The loop stays in pi (`AgentHarness`). piruse calls it only from this directory.
+
+- `pi.ts` is the only file that imports `@earendil-works/pi-agent-core`
+- `engine.ts` creates the execution env, jsonl repo, and harness
+- `watch.ts` turns lane events into `ViewState` / CLI run callbacks
+
+Apps and the rest of kernel import `runtime/`, never the npm package.
 Change reason: execution engine (run, resume, abort), not session storage.

@@ -110,7 +110,7 @@ Analyse 和 Coding 是同一套 kernel、同一份 `~/.piruse/sessions` jsonl。
 
 ## 结构
 
-浏览器只看到 `packages/protocol`。UI 禁止 import kernel 或 `pi-agent-core`。
+浏览器只看到 `packages/protocol`。UI 禁止 import kernel。kernel 除 `runtime/` 外禁止 import `@earendil-works/pi-agent-core`。循环在 pi，piruse 只通过 `runtime/` 调用。
 
 ```
 piruse/
@@ -122,6 +122,7 @@ piruse/
       src/
         create-kernel.ts            # 唯一组装根
         harness.ts                  # 绑定 session、lane、resume
+        runtime/                    # 唯一可 import pi-agent-core 的目录
         session/                    # 打开、续写、列表、归档
         tools/builtin/              # 一工具一文件
         models/                     # 目录、鉴权、解析
@@ -145,4 +146,4 @@ piruse/
 
 **注入：** models、tools、skills、profile 由 `create-kernel.ts` 交给 harness。
 
-当前有代码：`session/` · `tools/builtin/` · `models/` · `prompt/` · `compaction/` · `profile/` · `extensions/` · protocol。只留位置：`runtime/` · `memory/` · `tools/mcp` · `apps/gateway` · `apps/desktop`。上面这张图是现状，不是终局；布局和 pi-agent 接法都会再改。
+当前有代码：`runtime/` · `session/` · `tools/builtin/` · `models/` · `prompt/` · `compaction/` · `profile/` · `extensions/` · protocol。只留位置：`memory/` · `tools/mcp` · `apps/gateway` · `apps/desktop`。上面这张图是现状，不是终局；布局和三大模块还会再改。

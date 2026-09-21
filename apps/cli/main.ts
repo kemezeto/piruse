@@ -33,37 +33,37 @@ const boot = await bootHarness({
 	agentDir: args.agentDir,
 	permissionMode: args.permission,
 });
-const watch = await boot.lane.watch(boot.context);
+const stop = await boot.subscribeRun({
+	onText: (delta) => {
+		process.stdout.write(delta);
+	},
+	onTool: (name, hint) => {
+		process.stderr.write(`\n[${name}] ${hint}\n`);
+	},
+	onFail: (message) => {
+		process.stderr.write(`\n[run failed] ${message}\n`);
+	},
+});
 
 process.stderr.write(
-	`session ${boot.session.metadata.id}\npath    ${boot.session.metadata.path}\nmodel   ${boot.model.provider}/${boot.model.id}\n${boot.authSource ? `auth    ${boot.authSource}\n` : ""}`,
+	`session ${boot.sessionId}\npath    ${boot.sessionPath}\nmodel   ${boot.model.provider}/${boot.model.id}\n${boot.authSource ? `auth    ${boot.authSource}\n` : ""}`,
 );
-if (boot.open.length > 0) {
-	process.stderr.write(`resume  ${boot.open.map((operation) => `${operation.lane}/${operation.operationId}`).join(", ")}\n`);
+if (boot.resumeLabels.length > 0) {
+	process.stderr.write(`resume  ${boot.resumeLabels.join(", ")}\n`);
 }
-
-watch.start((event) => {
-	if (event.type === "message_update" && event.event.type === "text_delta") {
-		process.stdout.write(event.event.delta);
-	} else if (event.type === "tool_start") {
-		const toolArgs = event.args as { command?: string; path?: string };
-		process.stderr.write(`\n[${event.toolName}] ${toolArgs.command ?? toolArgs.path ?? ""}\n`);
-	} else if (event.type === "run_end" && event.status === "failed") {
-		process.stderr.write(`\n[run failed] ${event.error.message}\n`);
-	}
-});
 
 try {
 	await boot.resumeOpen();
 	if (args.prompt) {
 		await boot.rememberTitleFromPrompt(args.prompt);
-		const result = await boot.lane.prompt(args.prompt, undefined, boot.context);
-		if (!result.ok) fail(result.error);
-	} else if (boot.open.length === 0) {
+		await boot.prompt(args.prompt);
+	} else if (boot.resumeLabels.length === 0) {
 		process.stderr.write("idle (pass a prompt to continue this session)\n");
 	}
 	process.stdout.write("\n");
+} catch (error) {
+	fail(error instanceof Error ? error : String(error));
 } finally {
-	watch.unsubscribe();
+	stop();
 	await boot.close();
 }

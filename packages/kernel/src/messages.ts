@@ -1,4 +1,4 @@
-import type { AgentMessage } from "@earendil-works/pi-agent-core";
+import type { AgentMessage } from "./runtime/index.ts";
 import type { ViewItem } from "../../protocol/src/view.ts";
 
 export function itemsFromMessage(id: string, message: AgentMessage, streaming = false): ViewItem[] {

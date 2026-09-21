@@ -1,4 +1,4 @@
-import { createWriteTool } from "@earendil-works/pi-agent-core";
+import { createWriteTool } from "../../runtime/index.ts";
 
 export function writeTool() {
 	return createWriteTool();

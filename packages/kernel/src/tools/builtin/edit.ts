@@ -1,4 +1,4 @@
-import { createEditTool } from "@earendil-works/pi-agent-core";
+import { createEditTool } from "../../runtime/index.ts";
 
 export function editTool() {
 	return createEditTool();

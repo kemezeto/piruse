@@ -4,7 +4,7 @@
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
+import type { ThinkingLevel } from "../runtime/index.ts";
 import {
 	type Api,
 	clampThinkingLevel,

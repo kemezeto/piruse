@@ -3,7 +3,7 @@ import {
 	type AgentHarnessTool,
 	type ExecutionToolContext,
 	getOrThrow,
-} from "@earendil-works/pi-agent-core";
+} from "../../runtime/index.ts";
 import { Type } from "typebox";
 import { toolText } from "./result.ts";
 import { runCommand } from "./run.ts";

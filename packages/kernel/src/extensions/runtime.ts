@@ -1,5 +1,5 @@
 import { dirname } from "node:path";
-import type { AgentMessage, Context, JsonValue } from "@earendil-works/pi-agent-core";
+import type { AgentMessage, Context, JsonValue } from "../runtime/index.ts";
 import type { Api, Model, MutableModels } from "@earendil-works/pi-ai";
 import type { AgentProfile } from "../profile/types.ts";
 import type { Skill } from "../skills/index.ts";

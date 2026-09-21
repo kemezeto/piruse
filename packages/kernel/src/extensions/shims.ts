@@ -1,4 +1,4 @@
-import { convertToLlm } from "@earendil-works/pi-agent-core";
+import { convertToLlm } from "../runtime/index.ts";
 import { defineTool } from "./types.ts";
 
 class TuiNode {

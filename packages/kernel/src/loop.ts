@@ -1,2 +1,2 @@
-/** Turn cycle. Currently provided by pi-agent-core; replace this module when piruse owns the loop. */
+/** Turn cycle. Owned by pi-agent-core; piruse reaches it through `runtime/`. */
 export {};

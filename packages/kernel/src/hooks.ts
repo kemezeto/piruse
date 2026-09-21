@@ -1,4 +1,4 @@
-import type { AgentHarness, AgentLane, Context } from "@earendil-works/pi-agent-core";
+import type { AgentHarness, AgentLane, Context } from "./runtime/index.ts";
 import type { ApprovalRemember, ViewApproval } from "../../protocol/src/view.ts";
 import { formatArgs } from "./messages.ts";
 import { addBashPrefix, readPermissionMode, readStoredPermissions, writePermissionMode } from "./session/permissions.ts";

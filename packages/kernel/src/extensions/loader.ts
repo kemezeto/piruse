@@ -1,4 +1,4 @@
-import * as piAgentCore from "@earendil-works/pi-agent-core";
+import { piAgentCore } from "../runtime/index.ts";
 import * as piAiCompat from "@earendil-works/pi-ai/compat";
 import * as piAiOauth from "@earendil-works/pi-ai/oauth";
 import * as piAiProviders from "@earendil-works/pi-ai/providers/all";

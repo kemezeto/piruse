@@ -11,21 +11,17 @@
 import { execFile } from "node:child_process";
 import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
-import type { LaneSnapshot } from "@earendil-works/pi-agent-core";
-import { reduceLaneSnapshot } from "@earendil-works/pi-agent-core/harness/runtime/reducer";
 import { createServer as createViteServer } from "vite";
 import { WebSocketServer, type WebSocket } from "ws";
 import { pickDirectory } from "./pick-directory.ts";
 import { parseArgs } from "../flags.ts";
-import { bootHarness, type Operator } from "../../packages/kernel/src/create-kernel.ts";
-import { projectView } from "../../packages/kernel/src/view.ts";
+import { bootHarness, type Operator, type ViewSubscription } from "../../packages/kernel/src/create-kernel.ts";
 import { resolveBootCwd, writeLastProject } from "../../packages/kernel/src/session/projects.ts";
 import type { ClientMessage, SocketPayload, ViewMeta } from "../../packages/protocol/src/index.ts";
 
 interface Client {
 	socket: WebSocket;
-	detach?: () => void;
-	snapshot?: LaneSnapshot;
+	sub?: ViewSubscription;
 }
 
 const args = parseArgs(process.argv.slice(2));
@@ -60,8 +56,8 @@ operator.onPermissionChange(() => {
 		pendingApprovals: operator.pendingApprovals(),
 	};
 	for (const client of clients) {
-		if (client.snapshot && client.socket.readyState === client.socket.OPEN) {
-			send(client.socket, { type: "state", state: projectView(meta, client.snapshot) });
+		if (client.sub && client.socket.readyState === client.socket.OPEN) {
+			send(client.socket, { type: "state", state: client.sub.view(meta) });
 		}
 	}
 });
@@ -85,9 +81,9 @@ async function loadMeta(current: Operator): Promise<ViewMeta> {
 		current.sessionTitle(),
 	]);
 	return {
-		sessionId: current.session.metadata.id,
-		cwd: current.session.metadata.cwd,
-		sessionPath: current.session.metadata.path,
+		sessionId: current.sessionId,
+		cwd: current.cwd,
+		sessionPath: current.sessionPath,
 		sessionTitle,
 		models,
 		providers: catalog.providers,
@@ -107,8 +103,8 @@ function send(socket: WebSocket, payload: SocketPayload): void {
 
 function broadcast(): void {
 	for (const client of clients) {
-		if (client.snapshot && client.socket.readyState === client.socket.OPEN) {
-			send(client.socket, { type: "state", state: projectView(meta, client.snapshot) });
+		if (client.sub && client.socket.readyState === client.socket.OPEN) {
+			send(client.socket, { type: "state", state: client.sub.view(meta) });
 		}
 	}
 }
@@ -119,36 +115,28 @@ function notice(socket: WebSocket, error: unknown): void {
 
 async function attach(client: Client): Promise<void> {
 	const gen = generation;
-	const watch = await operator.lane.watch(operator.context);
+	const sub = await operator.subscribeView(
+		() => meta,
+		(state) => {
+			if (generation !== gen) return;
+			if (client.socket.readyState === client.socket.OPEN) {
+				send(client.socket, { type: "state", state });
+			}
+		},
+	);
 	if (generation !== gen || !clients.has(client) || client.socket.readyState !== client.socket.OPEN) {
-		watch.unsubscribe();
+		sub.unsubscribe();
 		return;
 	}
-	let snapshot: LaneSnapshot = watch.snapshot;
-	client.snapshot = snapshot;
-	send(client.socket, { type: "state", state: projectView(meta, snapshot) });
-	watch.start((event) => {
-		if (generation !== gen) return;
-		if (reduceLaneSnapshot(snapshot, event) === "rebase") {
-			void watch.resnapshot(operator.context).then((next) => {
-				if (generation !== gen) return;
-				snapshot = next;
-				client.snapshot = snapshot;
-				send(client.socket, { type: "state", state: projectView(meta, snapshot) });
-			});
-			return;
-		}
-		client.snapshot = snapshot;
-		send(client.socket, { type: "state", state: projectView(meta, snapshot) });
-	});
-	client.detach = () => watch.unsubscribe();
+	client.sub = sub;
+	send(client.socket, { type: "state", state: sub.view(meta) });
 }
 
 function dropWatches(): void {
 	generation += 1;
 	for (const client of clients) {
-		client.detach?.();
-		client.detach = undefined;
+		client.sub?.unsubscribe();
+		client.sub = undefined;
 	}
 }
 
@@ -189,8 +177,7 @@ wss.on("connection", (socket) => {
 				}
 				if (message.type === "abort") {
 					operator.rejectApprovals();
-					const result = await operator.lane.abort(operator.context);
-					if (!result.ok) notice(socket, result.error);
+					await operator.abort();
 					meta = await loadMeta(operator);
 					broadcast();
 					return;
@@ -205,8 +192,7 @@ wss.on("connection", (socket) => {
 						await operator.rememberTitleFromPrompt(message.text.trim());
 						meta = await loadMeta(operator);
 						broadcast();
-						const result = await operator.lane.prompt(message.text.trim(), undefined, operator.context);
-						if (!result.ok) notice(socket, result.error);
+						await operator.prompt(message.text.trim());
 						meta = await loadMeta(operator);
 						broadcast();
 					} else if (message.type === "setSessionTitle" && message.title?.trim()) {
@@ -251,8 +237,8 @@ wss.on("connection", (socket) => {
 							await rebind();
 						}
 					} else if (message.type === "archiveSession") {
-						const target = message.sessionId?.trim() || operator.session.metadata.id;
-						const switching = target === operator.session.metadata.id;
+						const target = message.sessionId?.trim() || operator.sessionId;
+						const switching = target === operator.sessionId;
 						if (switching) dropWatches();
 						try {
 							await operator.archiveSession(message.sessionId);
@@ -318,7 +304,7 @@ wss.on("connection", (socket) => {
 		})();
 	});
 	socket.on("close", () => {
-		client.detach?.();
+		client.sub?.unsubscribe();
 		clients.delete(client);
 	});
 });
@@ -346,14 +332,14 @@ server.on("upgrade", (request, socket, head) => {
 
 server.listen(args.port, "127.0.0.1", () => {
 	const url = `http://127.0.0.1:${args.port}`;
-	console.error(`session ${operator.session.metadata.id}`);
-	console.error(`path    ${operator.session.metadata.path}`);
-	console.error(`cwd     ${operator.session.metadata.cwd}`);
+	console.error(`session ${operator.sessionId}`);
+	console.error(`path    ${operator.sessionPath}`);
+	console.error(`cwd     ${operator.cwd}`);
 	console.error(`perm    ${operator.permissionMode()}`);
 	console.error(`model   ${operator.model.provider}/${operator.model.id}`);
 	if (operator.authSource) console.error(`auth    ${operator.authSource}`);
-	if (operator.open.length > 0) {
-		console.error(`resume  ${operator.open.map((operation) => `${operation.lane}/${operation.operationId}`).join(", ")}`);
+	if (operator.resumeLabels.length > 0) {
+		console.error(`resume  ${operator.resumeLabels.join(", ")}`);
 	}
 	console.error(`window  ${url}`);
 	if (args.openBrowser) openBrowser(url);

@@ -1,4 +1,4 @@
-import { createBashTool } from "@earendil-works/pi-agent-core";
+import { createBashTool } from "../../runtime/index.ts";
 
 export function bashTool() {
 	return createBashTool();

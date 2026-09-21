@@ -1,8 +1,7 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { homedir } from "node:os";
-import { getOrThrow, type Context, type JsonlSessionMetadata } from "@earendil-works/pi-agent-core";
-import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
+import { getOrThrow, type Context, type JsonlSessionMetadata, type NodeExecutionEnv } from "../runtime/index.ts";
 import type { ViewProjectOption } from "../../../protocol/src/view.ts";
 
 export function expandUserPath(path: string): string {

@@ -1,5 +1,5 @@
 import { basename, dirname } from "node:path";
-import type { AgentHarness, AgentHarnessTool, ExecutionToolContext } from "@earendil-works/pi-agent-core";
+import type { AgentHarness, AgentHarnessTool, ExecutionToolContext } from "../runtime/index.ts";
 import type { MutableModels, Provider } from "@earendil-works/pi-ai";
 import type { ViewPackageItem, ViewPackageStatus } from "../../../protocol/src/view.ts";
 import { resolveAgentDir } from "../models/paths.ts";

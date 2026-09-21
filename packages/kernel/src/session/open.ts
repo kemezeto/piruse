@@ -4,7 +4,7 @@ import {
 	type JsonlSessionMetadata,
 	type JsonlSessionRepo,
 	type Session,
-} from "@earendil-works/pi-agent-core";
+} from "../runtime/index.ts";
 
 export interface OpenSessionOptions {
 	cwd: string;

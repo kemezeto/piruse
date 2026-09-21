@@ -1,4 +1,4 @@
-import type { AgentHarness, AgentHarnessTool, ExecutionToolContext } from "@earendil-works/pi-agent-core";
+import type { AgentHarness, AgentHarnessTool, ExecutionToolContext } from "../runtime/index.ts";
 import { type Api, createProvider, envApiKeyAuth, type MutableModels, type Provider } from "@earendil-works/pi-ai";
 import { getApiProvider } from "@earendil-works/pi-ai/compat";
 import { runCommand } from "../tools/builtin/run.ts";

@@ -1,4 +1,4 @@
-import type { AgentToolResult, AgentToolUpdateCallback, ToolExecutionMode } from "@earendil-works/pi-agent-core";
+import type { AgentToolResult, AgentToolUpdateCallback, ToolExecutionMode } from "../runtime/index.ts";
 import type { Api, Model, Provider } from "@earendil-works/pi-ai";
 import type { Static, TSchema } from "typebox";
 

@@ -1,4 +1,4 @@
-import type { Entry } from "@earendil-works/pi-agent-core";
+import type { Entry } from "../runtime/index.ts";
 import type { ViewItem } from "../../../protocol/src/view.ts";
 
 /** Compacted window and branch summaries. Other transcript types stay in view.ts. */
