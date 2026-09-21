@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
-import { itemsFromMessage } from "./messages.ts";
+import { formatArgs, itemsFromMessage } from "./messages.ts";
 
 function assistant(content: unknown, streaming = false) {
 	return itemsFromMessage(
@@ -55,4 +55,13 @@ test("keeps thinking on the item after reply text starts", () => {
 	assert.equal(item.thinkingStreaming, false);
 	assert.equal(item.streaming, true);
 	assert.equal(item.text, "9.9 更大");
+});
+
+test("formatArgs prefers command, then pattern, then path", () => {
+	assert.equal(formatArgs({ command: "ls -la" }), "ls -la");
+	assert.equal(formatArgs({ pattern: "ViewItem", glob: "*.ts", path: "apps" }), "ViewItem *.ts apps");
+	assert.equal(formatArgs({ path: "apps/web/ui/src/workspace/Thread.tsx" }), "apps/web/ui/src/workspace/Thread.tsx");
+	assert.equal(formatArgs({ command: "echo  a\n  b" }), "echo a b");
+	assert.equal(formatArgs({ queries: ["北京今天天气 实时", "Beijing weather today"] }), "北京今天天气 实时, Beijing weather today");
+	assert.equal(formatArgs({ urls: ["https://example.com/a", "https://example.com/b"] }), "https://example.com/a, https://example.com/b");
 });
