@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { RefreshIcon } from "tdesign-icons-react";
-import type { ViewProjectOption } from "@protocol/view";
+import type { AnalyseSnapshot } from "@protocol/analyse";
 import { relativeTime } from "../format";
 import { healthTrendOption } from "./charts";
 import { DateRangePicker } from "./DateRangePicker";
@@ -20,12 +20,11 @@ function formatScore(value: number): string {
 	return Math.round(value).toLocaleString("en-US");
 }
 
-export function Quality({ projects }: { projects: ViewProjectOption[] }) {
+export function Quality({ snapshot, onReload }: { snapshot: AnalyseSnapshot | null; onReload: () => void }) {
 	const today = todayShanghai();
 	const [range, setRange] = useState<OverviewRange>({ mode: "relative", preset: "1y" });
-	const [updatedAt, setUpdatedAt] = useState(Date.now);
 	const resolved = useMemo(() => resolveRange(range, today), [range, today]);
-	const stats = useMemo(() => buildQualityStats(resolved, projects), [resolved, projects]);
+	const stats = useMemo(() => buildQualityStats(resolved, snapshot?.sessions ?? []), [resolved, snapshot]);
 	const trend = useMemo(() => healthTrendOption(stats.days), [stats.days]);
 	const gradeMax = Math.max(1, ...stats.grades.map((item) => item.count));
 	const outcomeTotal = Math.max(1, stats.outcomes.reduce((sum, item) => sum + item.count, 0));
@@ -35,17 +34,17 @@ export function Quality({ projects }: { projects: ViewProjectOption[] }) {
 			<div className="ov-toolbar">
 				<div className="ov-toolbar-start">
 					<DateRangePicker range={range} today={today} onChange={setRange} />
-					<button type="button" className="ov-tool ghost" onClick={() => setUpdatedAt(Date.now())}>
+					<button type="button" className="ov-tool ghost" onClick={onReload}>
 						<RefreshIcon size={15} />
-						<span>{relativeTime(updatedAt)}更新</span>
+						<span>{relativeTime(snapshot?.generatedAt ?? Date.now())}更新</span>
 					</button>
 				</div>
 			</div>
 
 			<div className="q-kpis">
 				<article className="q-kpi">
-					<span>平均分</span>
-					<strong>{formatScore(stats.avgScore)}</strong>
+					<span>完成率</span>
+					<strong>{formatPct(stats.completedRate)}</strong>
 					<em>等级 {stats.grade}</em>
 				</article>
 				<article className="q-kpi">
@@ -123,7 +122,7 @@ export function Quality({ projects }: { projects: ViewProjectOption[] }) {
 					<h2>健康度趋势</h2>
 				</div>
 				<EChart className="ov-chart q-chart-trend" option={trend} />
-				<p className="q-caption">每日平均分数，条形颜色 = 等级</p>
+				<p className="q-caption">按会话结果估算的操作健康度，不是模型打分</p>
 			</section>
 
 			<GroupTable title="按项目" nameLabel="项目" rows={stats.projects} />
@@ -143,7 +142,7 @@ function GroupTable({ title, nameLabel, rows }: { title: string; nameLabel: stri
 						<tr>
 							<th>{nameLabel}</th>
 							<th className="num">会话</th>
-							<th className="num">平均分</th>
+							<th className="num">健康度</th>
 							<th className="num">已完成</th>
 						</tr>
 					</thead>
@@ -152,7 +151,7 @@ function GroupTable({ title, nameLabel, rows }: { title: string; nameLabel: stri
 							<tr key={item.name}>
 								<td>{item.name}</td>
 								<td className="num">{item.sessions}</td>
-								<td className="num">{Math.round(item.avgScore)}</td>
+								<td className="num">{formatScore(item.avgScore)}</td>
 								<td className="num">{formatPct(item.completed)}</td>
 							</tr>
 						))}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { readAgentKind, writeAgentKind, type AgentKind } from "./agent";
 import { SettingsDialog } from "./settings/Settings";
 import { readSidebarCollapsed, Sidebar, writeSidebarCollapsed } from "./sidebar/Sidebar";
@@ -7,7 +7,7 @@ import { AnalyseWorkspace } from "./workspace/AnalyseWorkspace";
 import { Workspace } from "./workspace/Workspace";
 
 export function App() {
-	const { state, notice, line, sendCommand, sendPrompt } = useHost();
+	const { state, analyse, notice, line, sendCommand, sendPrompt, reloadAnalyse } = useHost();
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [collapsed, setCollapsed] = useState(readSidebarCollapsed);
 	const [agent, setAgent] = useState(readAgentKind);
@@ -21,6 +21,11 @@ export function App() {
 	const useCoding = (): void => {
 		if (agent !== "coding") selectAgent("coding");
 	};
+
+	useEffect(() => {
+		if (agent !== "analyse" || line !== "live") return;
+		reloadAnalyse();
+	}, [agent, line, reloadAnalyse]);
 
 	return (
 		<div className={`app${collapsed ? " collapsed" : ""}`}>
@@ -68,8 +73,9 @@ export function App() {
 					items={state?.items ?? []}
 					projects={state?.projects ?? []}
 					models={state?.models ?? []}
-					skills={state?.packages?.skills ?? []}
+					snapshot={analyse}
 					inspectNonce={inspectNonce}
+					onReload={reloadAnalyse}
 					onOpenInCoding={useCoding}
 				/>
 			) : (

@@ -183,6 +183,10 @@ wss.on("connection", (socket) => {
 					operator.resolveApproval(message.id, false);
 					return;
 				}
+				if (message.type === "loadAnalyse") {
+					send(socket, { type: "analyse", snapshot: await operator.listAnalyse() });
+					return;
+				}
 				if (message.type === "abort") {
 					operator.rejectApprovals();
 					const result = await operator.lane.abort(operator.context);

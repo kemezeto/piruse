@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { AnalyseSnapshot } from "@protocol/analyse";
 import type { ClientMessage, SocketPayload } from "@protocol/commands";
 import type { ViewState } from "@protocol/view";
 
@@ -8,12 +9,15 @@ export type HostCommand = (message: ClientMessage) => void;
 
 export function useHost(): {
 	state: ViewState | null;
+	analyse: AnalyseSnapshot | null;
 	notice: string;
 	line: Line;
 	sendCommand: HostCommand;
 	sendPrompt: (text: string) => void;
+	reloadAnalyse: () => void;
 } {
 	const [state, setState] = useState<ViewState | null>(null);
+	const [analyse, setAnalyse] = useState<AnalyseSnapshot | null>(null);
 	const [notice, setNotice] = useState("");
 	const [line, setLine] = useState<Line>("connecting");
 	const socketRef = useRef<WebSocket | null>(null);
@@ -31,6 +35,7 @@ export function useHost(): {
 			socket.onmessage = (event) => {
 				const message = JSON.parse(String(event.data)) as SocketPayload;
 				if (message.type === "state") setState(message.state);
+				if (message.type === "analyse") setAnalyse(message.snapshot);
 				if (message.type === "notice") setNotice(message.text);
 			};
 			socket.onclose = () => {
@@ -62,5 +67,9 @@ export function useHost(): {
 		[sendCommand],
 	);
 
-	return { state, notice, line, sendCommand, sendPrompt };
+	const reloadAnalyse = useCallback(() => {
+		sendCommand({ type: "loadAnalyse" });
+	}, [sendCommand]);
+
+	return { state, analyse, notice, line, sendCommand, sendPrompt, reloadAnalyse };
 }

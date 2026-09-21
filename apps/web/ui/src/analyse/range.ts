@@ -48,6 +48,28 @@ export function addDays(ymd: string, days: number): string {
 	return formatYmd(date);
 }
 
+export function ymdShanghai(ms: number): string {
+	return new Intl.DateTimeFormat("en-CA", {
+		timeZone: "Asia/Shanghai",
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+	}).format(new Date(ms));
+}
+
+export function clockShanghai(ms: number): string {
+	return new Intl.DateTimeFormat("en-GB", {
+		timeZone: "Asia/Shanghai",
+		hour: "2-digit",
+		minute: "2-digit",
+		hourCycle: "h23",
+	}).format(new Date(ms));
+}
+
+export function shanghaiMs(ymd: string, hour: number, minute: number): number {
+	return new Date(`${ymd}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00+08:00`).getTime();
+}
+
 export function addMonths(ymd: string, months: number): string {
 	const date = parseYmd(ymd);
 	date.setMonth(date.getMonth() + months);

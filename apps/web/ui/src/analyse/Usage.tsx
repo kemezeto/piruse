@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { ChevronDownIcon, FilterIcon, RefreshIcon } from "tdesign-icons-react";
 import { Popup } from "tdesign-react";
-import type { ViewModelOption, ViewProjectOption } from "@protocol/view";
+import type { AnalyseSnapshot } from "@protocol/analyse";
+import type { ViewModelOption } from "@protocol/view";
 import { relativeTime } from "../format";
 import { DateRangePicker } from "./DateRangePicker";
 import { EChart } from "./EChart";
@@ -65,7 +66,15 @@ function peakOf(days: { date: string; total: number }[], fallback: string): { va
 	return { value, date };
 }
 
-export function Usage({ projects, models }: { projects: ViewProjectOption[]; models: ViewModelOption[] }) {
+export function Usage({
+	snapshot,
+	models,
+	onReload,
+}: {
+	snapshot: AnalyseSnapshot | null;
+	models: ViewModelOption[];
+	onReload: () => void;
+}) {
 	const today = todayShanghai();
 	const [range, setRange] = useState<OverviewRange>({ mode: "relative", preset: "30d" });
 	const [mode, setMode] = useState<UsageMode>("cost");
@@ -73,7 +82,6 @@ export function Usage({ projects, models }: { projects: ViewProjectOption[]; mod
 	const [project, setProject] = useState("全部");
 	const [agent, setAgent] = useState("全部");
 	const [model, setModel] = useState("全部");
-	const [updatedAt, setUpdatedAt] = useState(Date.now);
 	const [trendDim, setTrendDim] = useState<TrendDim>("project");
 	const [attrDim, setAttrDim] = useState<UsageDim>("project");
 	const [attrView, setAttrView] = useState<AttrView>("treemap");
@@ -81,8 +89,8 @@ export function Usage({ projects, models }: { projects: ViewProjectOption[]; mod
 
 	const resolved = useMemo(() => resolveRange(range, today), [range, today]);
 	const stats = useMemo(
-		() => buildUsageStats(resolved, projects, models, { project, agent, model }),
-		[resolved, projects, models, project, agent, model],
+		() => buildUsageStats(resolved, snapshot?.sessions ?? [], models, { project, agent, model }),
+		[resolved, snapshot, models, project, agent, model],
 	);
 	const kind: UsageValueKind = mode === "cost" ? "usd" : "token";
 	const scale = useMemo(() => {
@@ -117,9 +125,12 @@ export function Usage({ projects, models }: { projects: ViewProjectOption[]; mod
 	const totalTokens = tokenTotal(stats);
 	const tokenKindLabel = TOKEN_KINDS.find((item) => item.id === tokenKind)?.label ?? "全部";
 
-	const projectNames = useMemo(() => ["全部", ...new Set(projects.map((item) => item.name))], [projects]);
+	const projectNames = useMemo(
+		() => ["全部", ...new Set((snapshot?.sessions ?? []).map((item) => item.project))],
+		[snapshot],
+	);
 	const modelNames = useMemo(() => ["全部", ...models.map((item) => item.name)], [models]);
-	const agentNames = ["全部", "cursor", "coding", "analyse", "copilot"];
+	const agentNames = ["全部", "coding"];
 
 	function toggleHidden(dim: string, name: string): void {
 		const key = `${dim}:${name}`;
@@ -159,9 +170,9 @@ export function Usage({ projects, models }: { projects: ViewProjectOption[]; mod
 					<FilterMenu icon label="项目" value={project} options={projectNames} onChange={setProject} />
 					<FilterMenu icon label="Agent" value={agent} options={agentNames} onChange={setAgent} />
 					<FilterMenu icon label="模型" value={model} options={modelNames} onChange={setModel} />
-					<button type="button" className="ov-tool ghost" onClick={() => setUpdatedAt(Date.now())}>
+					<button type="button" className="ov-tool ghost" onClick={onReload}>
 						<RefreshIcon size={15} />
-						<span>{relativeTime(updatedAt)}更新</span>
+						<span>{relativeTime(snapshot?.generatedAt ?? Date.now())}更新</span>
 					</button>
 				</div>
 			</div>
@@ -173,10 +184,6 @@ export function Usage({ projects, models }: { projects: ViewProjectOption[]; mod
 							<strong>{formatUsd(stats.totalCost)}</strong>
 							<span>总成本</span>
 							<em className={stats.delta <= 0 ? "down" : "up"}>较上一周期 {formatDelta(stats.delta)}</em>
-						</article>
-						<article className="use-kpi">
-							<strong>{stats.credits}</strong>
-							<span>Copilot AI Credits</span>
 						</article>
 					</>
 				) : (

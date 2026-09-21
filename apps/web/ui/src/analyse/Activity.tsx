@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDownIcon, FilterIcon, RefreshIcon } from "tdesign-icons-react";
 import { Pagination, Popup } from "tdesign-react";
-import type { ViewModelOption, ViewProjectOption } from "@protocol/view";
+import type { AnalyseSnapshot } from "@protocol/analyse";
+import type { ViewModelOption } from "@protocol/view";
 import { relativeTime } from "../format";
 import {
 	activityFilterOptions,
@@ -31,7 +32,15 @@ function shanghaiClock(ms = Date.now()): string {
 	}).format(new Date(ms));
 }
 
-export function Activity({ projects, models }: { projects: ViewProjectOption[]; models: ViewModelOption[] }) {
+export function Activity({
+	snapshot,
+	models,
+	onReload,
+}: {
+	snapshot: AnalyseSnapshot | null;
+	models: ViewModelOption[];
+	onReload: () => void;
+}) {
 	const today = todayShanghai();
 	const [range, setRange] = useState<OverviewRange>({ mode: "calendar", grain: "month", anchor: today });
 	const [project, setProject] = useState("所有项目");
@@ -40,16 +49,23 @@ export function Activity({ projects, models }: { projects: ViewProjectOption[]; 
 	const [overlay, setOverlay] = useState<OverlayMetric>("token");
 	const [sort, setSort] = useState<ActivitySort>("minutes");
 	const [desc, setDesc] = useState(true);
-	const [updatedAt, setUpdatedAt] = useState(Date.now);
 	const [overlayOpen, setOverlayOpen] = useState(false);
 	const [page, setPage] = useState(1);
 	const [pageSize, setPageSize] = useState(10);
 
 	const resolved = useMemo(() => resolveRange(range, today), [range, today]);
-	const options = useMemo(() => activityFilterOptions(projects), [projects]);
+	const options = useMemo(() => activityFilterOptions(snapshot?.sessions ?? []), [snapshot]);
 	const stats = useMemo(
-		() => buildActivityStats(resolved, projects, models, { project, agent, session }, updatedAt, today),
-		[resolved, projects, models, project, agent, session, updatedAt, today],
+		() =>
+			buildActivityStats(
+				resolved,
+				snapshot?.sessions ?? [],
+				models,
+				{ project, agent, session },
+				snapshot?.generatedAt ?? Date.now(),
+				today,
+			),
+		[resolved, snapshot, models, project, agent, session, today],
 	);
 	const rows = useMemo(() => sortedActivity(stats.rows, sort, desc), [stats.rows, sort, desc]);
 	const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
@@ -81,9 +97,9 @@ export function Activity({ projects, models }: { projects: ViewProjectOption[]; 
 					<FilterMenu value={project} options={options.projects} onChange={setProject} />
 					<FilterMenu value={agent} options={options.agents} onChange={setAgent} />
 					<FilterMenu value={session} options={options.sessions} onChange={setSession} />
-					<button type="button" className="ov-tool ghost" onClick={() => setUpdatedAt(Date.now())}>
+					<button type="button" className="ov-tool ghost" onClick={onReload}>
 						<RefreshIcon size={15} />
-						<span>{relativeTime(updatedAt)}更新</span>
+						<span>{relativeTime(snapshot?.generatedAt ?? Date.now())}更新</span>
 					</button>
 				</div>
 			</div>
@@ -124,7 +140,7 @@ export function Activity({ projects, models }: { projects: ViewProjectOption[]; 
 
 			<section className="ov-card">
 				<div className="ov-card-head">
-					<h2>{stats.inProgress ? `进行中，截至 ${shanghaiClock(updatedAt)}` : "活动"}</h2>
+					<h2>{stats.inProgress ? `进行中，截至 ${shanghaiClock(snapshot?.generatedAt)}` : "活动"}</h2>
 					<div className="act-legend">
 						<span>
 							<i style={{ background: "#4f7dff" }} />
@@ -202,7 +218,7 @@ export function Activity({ projects, models }: { projects: ViewProjectOption[]; 
 									<td>{item.model}</td>
 									<td>{item.project}</td>
 									<td>{item.agent}</td>
-									<td className="num">{item.timed ? item.minutes : "—"}</td>
+									<td className="num">{item.timed ? Math.round(item.minutes) : "—"}</td>
 									<td className="num">{formatUsd(item.cost)}</td>
 									<td className="num">{item.window}</td>
 								</tr>

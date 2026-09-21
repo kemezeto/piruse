@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import type { ViewItem, ViewModelOption, ViewPackageItem, ViewProjectOption } from "@protocol/view";
+import type { AnalyseSnapshot } from "@protocol/analyse";
+import type { ViewItem, ViewModelOption, ViewProjectOption } from "@protocol/view";
+import { Activity } from "../analyse/Activity";
+import { DataTable } from "../analyse/Data";
 import { Overview } from "../analyse/Overview";
+import { Quality } from "../analyse/Quality";
 import { SessionInspect } from "../analyse/SessionInspect";
 import { Usage } from "../analyse/Usage";
-import { Activity } from "../analyse/Activity";
-import { Quality } from "../analyse/Quality";
 
 const TABS = [
 	{ id: "overview", label: "概览" },
@@ -45,8 +47,9 @@ export function AnalyseWorkspace({
 	items,
 	projects,
 	models,
-	skills,
+	snapshot,
 	inspectNonce,
+	onReload,
 	onOpenInCoding,
 }: {
 	sessionId: string;
@@ -55,8 +58,9 @@ export function AnalyseWorkspace({
 	items: ViewItem[];
 	projects: ViewProjectOption[];
 	models: ViewModelOption[];
-	skills: ViewPackageItem[];
+	snapshot: AnalyseSnapshot | null;
 	inspectNonce: number;
+	onReload: () => void;
 	onOpenInCoding: () => void;
 }) {
 	const [tab, setTab] = useState(readAnalyseTab);
@@ -98,7 +102,9 @@ export function AnalyseWorkspace({
 				role="tabpanel"
 				aria-labelledby={`analyse-tab-${current.id}`}
 			>
-				{current.id === "overview" ? <Overview projects={projects} models={models} skills={skills} /> : null}
+				{current.id === "overview" ? (
+					<Overview snapshot={snapshot} models={models} onReload={onReload} />
+				) : null}
 				{current.id === "sessions" ? (
 					<SessionInspect
 						key={sessionId}
@@ -110,9 +116,10 @@ export function AnalyseWorkspace({
 						onOpenInCoding={onOpenInCoding}
 					/>
 				) : null}
-				{current.id === "usage" ? <Usage projects={projects} models={models} /> : null}
-				{current.id === "activity" ? <Activity projects={projects} models={models} /> : null}
-				{current.id === "quality" ? <Quality projects={projects} /> : null}
+				{current.id === "usage" ? <Usage snapshot={snapshot} models={models} onReload={onReload} /> : null}
+				{current.id === "activity" ? <Activity snapshot={snapshot} models={models} onReload={onReload} /> : null}
+				{current.id === "quality" ? <Quality snapshot={snapshot} onReload={onReload} /> : null}
+				{current.id === "data" ? <DataTable snapshot={snapshot} /> : null}
 			</section>
 		</main>
 	);

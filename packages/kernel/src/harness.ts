@@ -11,6 +11,7 @@ import {
 } from "@earendil-works/pi-agent-core";
 import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
 import type { MutableModels, Provider } from "@earendil-works/pi-ai";
+import type { AnalyseSnapshot } from "../../protocol/src/analyse.ts";
 import type {
 	ApprovalRemember,
 	ViewArchivedSession,
@@ -36,6 +37,7 @@ import {
 } from "./models/index.ts";
 import { loadModelsJson, saveModelsJson, type ModelsJsonModel } from "./models/models-json.ts";
 import type { AgentPaths } from "./models/paths.ts";
+import { loadAnalyseSnapshot } from "./session/analyse.ts";
 import { isArchived, readArchiveIndex, writeArchiveIndex } from "./session/archive.ts";
 import { openFirstReadable, openInitialSession, shortId } from "./session/open.ts";
 import { readPermissionMode } from "./session/permissions.ts";
@@ -88,6 +90,7 @@ export interface BootedHarness {
 	listSessions(): Promise<ViewSessionOption[]>;
 	listArchivedSessions(): Promise<ViewArchivedSession[]>;
 	listProjects(): Promise<ViewProjectOption[]>;
+	listAnalyse(): Promise<AnalyseSnapshot>;
 	sessionTitle(): Promise<string>;
 	setSessionTitle(sessionId: string | undefined, title: string): Promise<void>;
 	rememberTitleFromPrompt(text: string): Promise<void>;
@@ -356,6 +359,12 @@ export class Operator implements BootedHarness {
 				modifiedAt: entry.modifiedAt,
 			})),
 		}));
+	}
+
+	async listAnalyse(): Promise<AnalyseSnapshot> {
+		const listed = await this.liveSessions();
+		const titles = await this.titlesFor(listed);
+		return loadAnalyseSnapshot(listed, titles);
 	}
 
 	async sessionTitle(): Promise<string> {

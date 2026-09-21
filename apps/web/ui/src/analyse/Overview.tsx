@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { FilterIcon, RefreshIcon } from "tdesign-icons-react";
 import { Popup } from "tdesign-react";
-import type { ViewModelOption, ViewPackageItem, ViewProjectOption } from "@protocol/view";
+import type { AnalyseSnapshot } from "@protocol/analyse";
+import type { ViewModelOption } from "@protocol/view";
 import { relativeTime } from "../format";
 import { DateRangePicker } from "./DateRangePicker";
 import { EChart } from "./EChart";
@@ -43,18 +44,17 @@ function formatOne(value: number): string {
 }
 
 export function Overview({
-	projects,
+	snapshot,
 	models,
-	skills,
+	onReload,
 }: {
-	projects: ViewProjectOption[];
+	snapshot: AnalyseSnapshot | null;
 	models: ViewModelOption[];
-	skills: ViewPackageItem[];
+	onReload: () => void;
 }) {
 	const today = todayShanghai();
 	const [range, setRange] = useState<OverviewRange>({ mode: "relative", preset: "1y" });
 	const [model, setModel] = useState("全部");
-	const [updatedAt, setUpdatedAt] = useState(Date.now);
 	const [activityMetric, setActivityMetric] = useState<ActivityMetric>("messages");
 	const [timeMetric, setTimeMetric] = useState<"messages" | "sessions">("messages");
 	const [grain, setGrain] = useState<TimeGrain>("day");
@@ -63,8 +63,8 @@ export function Overview({
 
 	const resolved = useMemo(() => resolveRange(range, today), [range, today]);
 	const stats = useMemo(
-		() => buildOverviewStats(resolved, projects, models, model, skills),
-		[resolved, projects, models, model, skills],
+		() => buildOverviewStats(resolved, snapshot?.sessions ?? [], models, model),
+		[resolved, snapshot, models, model],
 	);
 	const heatOption = useMemo(
 		() => calendarHeatOption(stats.days, activityMetric, resolved.start, resolved.end),
@@ -86,13 +86,9 @@ export function Overview({
 			<div className="ov-toolbar">
 				<div className="ov-toolbar-start">
 					<DateRangePicker range={range} today={today} onChange={setRange} />
-					<button
-						type="button"
-						className="ov-tool ghost"
-						onClick={() => setUpdatedAt(Date.now())}
-					>
+					<button type="button" className="ov-tool ghost" onClick={onReload}>
 						<RefreshIcon size={15} />
-						<span>{relativeTime(updatedAt)}更新</span>
+						<span>{relativeTime(snapshot?.generatedAt ?? Date.now())}更新</span>
 					</button>
 					<Popup
 						visible={modelOpen}
@@ -245,7 +241,16 @@ export function Overview({
 				</section>
 			</div>
 			<ToolUsage tools={stats.tools} categories={stats.toolCategories} weeks={stats.toolWeeks} total={stats.toolCalls} />
-			<SkillUsage skills={stats.skills} trend={stats.skillTrend} total={stats.skillCalls} />
+			{stats.skillCalls > 0 ? (
+				<SkillUsage skills={stats.skills} trend={stats.skillTrend} total={stats.skillCalls} />
+			) : (
+				<section className="ov-card">
+					<div className="ov-card-head">
+						<h2>常用 Skills</h2>
+						<span className="ov-muted">会话里还没有技能调用记录</span>
+					</div>
+				</section>
+			)}
 		</div>
 	);
 }
