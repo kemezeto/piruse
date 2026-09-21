@@ -72,6 +72,14 @@ npm start -- --model deepseek/deepseek-v4-flash "…"
 
 记忆模块（`memory/internal`、`memory/external`）还没接上。跨轮内容靠会话 jsonl；窗口太大时走 compaction。
 
+## 还要改
+
+整体循环已经能跑通，后面不会大动。这几处实现还不行，之后会改：
+
+1. **技能、扩展、工具** 三大模块：现在能发现 / 加载 / 调用，但具体实现有问题，边界、启用方式和跟 kernel 的接法都不干净。
+2. **文件布局**：系统架构和目录切分还要再收。职责散、边界糊，之后会重新排。
+3. **引入 pi-agent 的方案**：现在对 pi 的依赖切法不够好，之后会换成更干净的接法。
+
 ## Analyse 看板：哪些数据接得上
 
 Analyse 和 Coding 是同一套 kernel、同一份 `~/.piruse/sessions` jsonl。看板不另做埋点 SDK，也不读 Cursor / Copilot / 云端账单。浏览器只拿汇总快照（`loadAnalyse`），不直接读账本。
@@ -137,4 +145,4 @@ piruse/
 
 **注入：** models、tools、skills、profile 由 `create-kernel.ts` 交给 harness。
 
-当前有代码：`session/` · `tools/builtin/` · `models/` · `prompt/` · `compaction/` · `profile/` · `extensions/` · protocol。只留位置：`runtime/` · `memory/` · `tools/mcp` · `apps/gateway` · `apps/desktop`。
+当前有代码：`session/` · `tools/builtin/` · `models/` · `prompt/` · `compaction/` · `profile/` · `extensions/` · protocol。只留位置：`runtime/` · `memory/` · `tools/mcp` · `apps/gateway` · `apps/desktop`。上面这张图是现状，不是终局；布局和 pi-agent 接法都会再改。
