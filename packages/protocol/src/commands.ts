@@ -10,6 +10,7 @@ export type ClientMessage =
 	| { type: "openSession"; sessionId?: string }
 	| { type: "newSession" }
 	| { type: "openProject"; cwd?: string }
+	| { type: "deleteProject"; cwd?: string }
 	| { type: "pickProject" }
 	| { type: "archiveSession"; sessionId?: string }
 	| { type: "unarchiveSession"; sessionId?: string }

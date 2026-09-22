@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AnalyticsIcon, ChatBubbleHelpIcon, ChevronRightIcon, CodeIcon, FolderAddIcon, FolderIcon, FolderOpen1Icon, MenuFoldIcon, MenuUnfoldIcon, SettingIcon } from "tdesign-icons-react";
+import { AnalyticsIcon, ChatBubbleHelpIcon, ChevronRightIcon, CodeIcon, DeleteIcon, FolderAddIcon, FolderIcon, FolderOpen1Icon, MenuFoldIcon, MenuUnfoldIcon, SettingIcon } from "tdesign-icons-react";
 import type { ViewProjectOption, ViewSessionOption } from "@protocol/view";
 import type { AgentKind } from "../agent";
 import { ConfirmDialog } from "../dialog/Confirm";
@@ -20,6 +20,7 @@ export function Sidebar({
 	onNewChat,
 	onOpenProject,
 	onPickProject,
+	onDeleteProject,
 	onOpenSession,
 	onArchive,
 	onSettings,
@@ -35,12 +36,14 @@ export function Sidebar({
 	onNewChat: () => void;
 	onOpenProject: (cwd: string) => void;
 	onPickProject: () => void;
+	onDeleteProject: (cwd: string) => void;
 	onOpenSession: (sessionId: string) => void;
 	onArchive: (sessionId: string) => void;
 	onSettings: () => void;
 }) {
 	const [expanded, setExpanded] = useState<Set<string>>(() => new Set([cwd]));
 	const [pending, setPending] = useState<ViewSessionOption | null>(null);
+	const [pendingProject, setPendingProject] = useState<ViewProjectOption | null>(null);
 	const now = useClock();
 
 	useEffect(() => {
@@ -127,17 +130,39 @@ export function Sidebar({
 							const open = expanded.has(project.cwd);
 							return (
 								<div key={project.cwd} className="sidebar-project">
-									<button
-										type="button"
+									<div
 										className={`sidebar-folder${project.cwd === cwd ? " current" : ""}${open ? " open" : ""}`}
 										title={project.cwd}
-										aria-expanded={open}
-										onClick={() => toggleProject(project.cwd, project.sessionCount)}
 									>
-										{open ? <FolderOpen1Icon size={14} /> : <FolderIcon size={14} />}
-										<span>{project.name}</span>
-										<ChevronRightIcon size={14} className={`caret${open ? " open" : ""}`} />
-									</button>
+										<button
+											type="button"
+											className="sidebar-folder-open"
+											aria-expanded={open}
+											onClick={() => toggleProject(project.cwd, project.sessionCount)}
+										>
+											{open ? <FolderOpen1Icon size={14} /> : <FolderIcon size={14} />}
+											<span>{project.name}</span>
+										</button>
+										<button
+											type="button"
+											className="sidebar-project-delete"
+											aria-label={`删除项目 ${project.name}`}
+											title={running && project.cwd === cwd ? "请先停止当前运行" : "删除项目"}
+											disabled={running && project.cwd === cwd}
+											onClick={() => setPendingProject(project)}
+										>
+											<DeleteIcon size={14} />
+										</button>
+										<button
+											type="button"
+											className="sidebar-folder-caret"
+											aria-expanded={open}
+											aria-label={open ? "收起项目" : "展开项目"}
+											onClick={() => toggleProject(project.cwd, project.sessionCount)}
+										>
+											<ChevronRightIcon size={14} className={`caret${open ? " open" : ""}`} />
+										</button>
+									</div>
 									{open
 										? project.sessions.map((session) => (
 												<ChatRow
@@ -168,6 +193,19 @@ export function Sidebar({
 					<SettingIcon size={16} />
 				</button>
 			</div>
+			<ConfirmDialog
+				open={Boolean(pendingProject)}
+				title="删除项目"
+				body={`确认删除项目「${pendingProject?.name ?? ""}」？该项目下的全部对话（包括已归档）会被永久删除。项目文件夹本身不会从磁盘移除。`}
+				confirmLabel="删除项目"
+				danger
+				onCancel={() => setPendingProject(null)}
+				onConfirm={() => {
+					if (!pendingProject) return;
+					onDeleteProject(pendingProject.cwd);
+					setPendingProject(null);
+				}}
+			/>
 			<ConfirmDialog
 				open={Boolean(pending)}
 				title="归档对话"

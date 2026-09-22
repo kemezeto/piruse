@@ -53,6 +53,7 @@ export function App() {
 					useCoding();
 					sendCommand({ type: "pickProject" });
 				}}
+				onDeleteProject={(cwd) => sendCommand({ type: "deleteProject", cwd })}
 				onOpenSession={(id) => {
 					if (agent === "analyse") {
 						setInspectNonce((value) => value + 1);

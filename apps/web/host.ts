@@ -243,6 +243,22 @@ wss.on("connection", (socket) => {
 						} finally {
 							await rebind();
 						}
+					} else if (message.type === "deleteProject" && message.cwd?.trim()) {
+						const beforeId = operator.sessionId;
+						const leaving = message.cwd.trim() === operator.cwd;
+						if (leaving) dropWatches();
+						try {
+							await operator.deleteProject(message.cwd.trim());
+						} finally {
+							const switched = operator.sessionId !== beforeId;
+							if (leaving || switched) {
+								if (!leaving) dropWatches();
+								await rebind();
+							} else {
+								meta = await loadMeta(operator);
+								broadcast();
+							}
+						}
 					} else if (message.type === "archiveSession") {
 						const target = message.sessionId?.trim() || operator.sessionId;
 						const switching = target === operator.sessionId;

@@ -236,17 +236,71 @@ textarea {
 
 .sidebar-folder {
 	width: 100%;
+	display: flex;
+	align-items: center;
+	gap: 0.1rem;
+	padding-right: 0.15rem;
+	border-radius: 0.55rem;
+	color: var(--muted);
+	font-size: 0.86rem;
+}
+
+.sidebar-folder-open {
+	min-width: 0;
+	flex: 1;
 	border: 0;
 	background: transparent;
-	color: var(--muted);
+	color: inherit;
 	display: flex;
 	align-items: center;
 	gap: 0.45rem;
-	padding: 0.44rem 0.45rem;
+	padding: 0.44rem 0.35rem 0.44rem 0.45rem;
 	border-radius: 0.55rem;
 	cursor: pointer;
 	text-align: left;
-	font-size: 0.86rem;
+	font: inherit;
+}
+
+.sidebar-project-delete {
+	display: none;
+	flex: none;
+	width: 1.55rem;
+	height: 1.55rem;
+	border: 0;
+	border-radius: 0.4rem;
+	background: transparent;
+	color: var(--muted);
+	place-items: center;
+	cursor: pointer;
+}
+
+.sidebar-folder:hover .sidebar-project-delete,
+.sidebar-folder:focus-within .sidebar-project-delete {
+	display: grid;
+}
+
+.sidebar-folder-caret {
+	flex: none;
+	width: 1.4rem;
+	height: 1.55rem;
+	border: 0;
+	border-radius: 0.4rem;
+	background: transparent;
+	color: inherit;
+	display: grid;
+	place-items: center;
+	padding: 0;
+	cursor: pointer;
+}
+
+.sidebar-project-delete:hover:not(:disabled) {
+	background: color-mix(in srgb, var(--danger) 12%, transparent);
+	color: var(--danger);
+}
+
+.sidebar-project-delete:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
 }
 
 .sidebar-chat {

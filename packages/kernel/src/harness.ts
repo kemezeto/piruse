@@ -1,3 +1,5 @@
+import { homedir } from "node:os";
+import { dirname } from "node:path";
 import type { MutableModels, Provider } from "@earendil-works/pi-ai";
 import type { AnalyseSnapshot } from "../../protocol/src/analyse.ts";
 import type {
@@ -113,6 +115,7 @@ export interface BootedHarness {
 	openSession(sessionId: string): Promise<void>;
 	newSession(): Promise<void>;
 	openProject(cwd: string): Promise<void>;
+	deleteProject(cwd: string): Promise<void>;
 	archiveSession(sessionId?: string): Promise<void>;
 	unarchiveSession(sessionId: string): Promise<void>;
 	deleteArchivedSession(sessionId: string): Promise<void>;
@@ -433,6 +436,46 @@ export class Operator implements BootedHarness {
 		});
 	}
 
+	async deleteProject(cwdInput: string): Promise<void> {
+		const target = cwdInput.trim();
+		if (!target) throw new Error("Project path is required");
+		const same = (cwd: string): boolean => samePath(cwd, target);
+		if (same(this.cwd) && (await this.isRunning())) {
+			throw new Error("请先停止当前运行，再删除项目。");
+		}
+		if (same(this.cwd)) {
+			const others = (await this.liveSessions()).filter((entry) => !same(entry.cwd));
+			others.sort((left, right) => right.modifiedAt - left.modifiedAt);
+			if (!this.harness) await this.session.close(this.context);
+			await this.replaceSession(async () => {
+				const next = await openFirstReadable(this.repo, others, this.context);
+				if (next) return next;
+				return this.repo.create({ cwd: await this.replacementCwd(target) }, this.context);
+			});
+		}
+		const listed = await this.repo.list(undefined, this.context);
+		const victims = listed.filter((entry) => same(entry.cwd) && entry.id !== this.session.metadata.id);
+		for (const metadata of victims) await this.deleteSessionFile(metadata);
+		const archive = await readArchiveIndex(this.sessionsRoot);
+		const titles = await readTitleIndex(this.sessionsRoot);
+		const removed = new Set(victims.map((entry) => entry.id));
+		let archiveChanged = false;
+		for (const [id, record] of Object.entries(archive)) {
+			if (!same(record.cwd) || id === this.session.metadata.id) continue;
+			delete archive[id];
+			removed.add(id);
+			archiveChanged = true;
+		}
+		if (archiveChanged) await writeArchiveIndex(this.sessionsRoot, archive);
+		let titlesChanged = false;
+		for (const id of removed) {
+			if (!titles[id]) continue;
+			delete titles[id];
+			titlesChanged = true;
+		}
+		if (titlesChanged) await writeTitleIndex(this.sessionsRoot, titles);
+	}
+
 	async archiveSession(sessionId?: string): Promise<void> {
 		const id = sessionId?.trim() || this.session.metadata.id;
 		const index = await readArchiveIndex(this.sessionsRoot);
@@ -572,6 +615,29 @@ export class Operator implements BootedHarness {
 		}
 		const first = await this.firstUserPrompt();
 		if (first) await this.setSessionTitle(id, first);
+	}
+
+	private async deleteSessionFile(metadata: JsonlSessionMetadata): Promise<void> {
+		try {
+			await this.repo.delete(metadata, this.context);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			if (message.includes("does not exist")) return;
+			throw error;
+		}
+	}
+
+	private async replacementCwd(deleted: string): Promise<string> {
+		for (const candidate of [homedir(), process.cwd(), dirname(deleted)]) {
+			if (!candidate || samePath(candidate, deleted)) continue;
+			try {
+				const resolved = await resolveProjectDirectory(this.executionEnv, candidate, this.context);
+				if (!samePath(resolved, deleted)) return resolved;
+			} catch {
+				continue;
+			}
+		}
+		throw new Error("没有其他工作目录可以切换，无法删除当前项目。");
 	}
 
 	private async liveSessions(filter?: { cwd?: string }): Promise<JsonlSessionMetadata[]> {
@@ -950,6 +1016,11 @@ function slugId(id: string): string {
 		throw new Error("Provider id must start with a letter, then letters, digits, or hyphens");
 	}
 	return value;
+}
+
+function samePath(left: string, right: string): boolean {
+	const normalize = (value: string): string => value.replace(/[/\\]+$/, "");
+	return left === right || normalize(left) === normalize(right);
 }
 
 function cleanBaseUrl(value: string | undefined): string | undefined {
